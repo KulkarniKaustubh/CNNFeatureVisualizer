@@ -8,10 +8,10 @@ from torchvision import utils
 
 
 def visualize_conv(tensor, ch=0, all_kernels=False, nrow=8, padding=1):
-    n, c, w, h = tensor.shape
+    n, c, h, w = tensor.shape
 
     if allkernels:
-        tensor = tensor.view(n * c, -1, w, h)
+        tensor = tensor.view(n * c, -1, h, w)
     elif c != 3:
         tensor = tensor[:, ch, :, :].unsqueeze(dim=1)
 
