@@ -1,4 +1,4 @@
-import cv2
+# import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,7 +10,7 @@ from torchvision import utils
 def visualize_conv(tensor, ch=0, all_kernels=False, nrow=8, padding=1):
     n, c, h, w = tensor.shape
 
-    if allkernels:
+    if all_kernels:
         tensor = tensor.view(n * c, -1, h, w)
     elif c != 3:
         tensor = tensor[:, ch, :, :].unsqueeze(dim=1)
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     print(data.shape)  # shape is (n, c, h, w)
 
-    visTensor(data, ch=0, allkernels=False)
+    visualize_conv(data, ch=0, all_kernels=False)
 
     plt.axis("off")
     plt.ioff()
