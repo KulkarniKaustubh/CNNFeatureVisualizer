@@ -1,0 +1,22 @@
+# Ignoring pycache
+__pycache__
+
+# Ignore PyTorch model files
+*.pt
+
+# Ignoring any image files
+*.png
+*.jpg
+*.jpeg
+
+# Python package stuff
+.Python
+env/
+build/
+dist/
+eggs/
+.eggs/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
