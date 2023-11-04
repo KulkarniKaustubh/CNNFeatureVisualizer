@@ -3,6 +3,7 @@ __pycache__
 
 # Ignore PyTorch model files
 *.pt
+*.pth
 
 # Ignoring any image files
 *.png
