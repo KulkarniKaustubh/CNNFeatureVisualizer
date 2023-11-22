@@ -4,10 +4,9 @@ from torch import jit
 import torch.nn as nn
 from torchvision import models
 
-from cnn_layer_visualization import CNNLayerVisualization
-from misc_functions import preprocess_image, recreate_image, save_image
-import pickle
-import inspect
+import sys
+
+sys.path.append("..")
 
 import torchboard as tb
 
@@ -28,17 +27,6 @@ class SmallCNN(nn.Module):
         self.fc2 = nn.LazyLinear(10)
         # self.fc2 = nn.Linear(64, 10)
 
-    def __getitem__(self, key):
-        counter = 0
-        if isinstance(key, int) and key >= 0:
-            for module in self.modules():
-                if counter == key:
-                    return module
-
-                counter += 1
-
-        raise TypeError(f"Invalid key {key}")
-
     def forward(self, x):
         x = self.conv1(x)
         x = self.relu1(x)
@@ -57,28 +45,9 @@ if __name__ == "__main__":
     # Create an instance of the model
     model = SmallCNN()
 
-    # print(inspect.getsource(SmallCNN))
-    # print(model[1])
-
-    # jit.save(jit.script(model), "../models/test_model.pth")
-
-    # Save the model weights
-    # torch.save(model.state_dict(), "../models/test_model.pth")
-
-    # pretrained_model = models.vgg16(pretrained=True)
-    # print(pretrained_model)
-    # print(
-    #     [
-    #         name
-    #         for name, _ in getattr(pretrained_model, "features").named_children()
-    #     ]
-    # )
-    # for c in pretrained_model.children():
-    #     print(c)
-    #
-    # layer_vis = tb.CNNLayerVisualization(pretrained_model, 2, 5)
-    # layer_vis = tb.CNNLayerVisualization(model, 3, 5)
+    # model = models.vgg16(pretrained=True).features
+    layer_vis = tb.CNNLayerVisualization(model, 0, 5)
 
     # Layer visualization with pytorch hooks
     # layer_vis.visualise_layer_with_hooks()
-    # layer_vis.visualise_layer_without_hooks()
+    layer_vis.visualise_layer_without_hooks()

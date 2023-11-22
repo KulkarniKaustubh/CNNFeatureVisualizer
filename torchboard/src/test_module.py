@@ -1,50 +1,11 @@
-"""
-Created on Sat Nov 18 23:12:08 2017
-
-@author: Utku Ozbulak - github.com/utkuozbulak
-"""
 import os
 import numpy as np
-import argparse
 
 import torch
 from torch.optim import Adam
-from torchvision import models
 
-from misc_functions import preprocess_image, recreate_image, save_image
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Argument Parser")
-    parser.add_argument(
-        "-m",
-        "--model-path",
-        type=str,
-        help="Path to the model file",
-    )
-
-    args = parser.parse_args()
-    return args
-
-
-class SubscriptableJitModel(torch.jit._script.RecursiveScriptModule):
-    def __init__(self, jit_model):
-        super(SubscriptableJitModel, self).__init__(jit_model)
-        self.jit_model = jit_model
-
-    def __getitem__(self, key):
-        counter = 0
-        if isinstance(key, int) and key >= 0:
-            for module in self.jit_model.modules():
-                if counter == key:
-                    return module
-
-                counter += 1
-
-        raise TypeError(f"Invalid key {key}")
-
-    def __call__(self, *args, **kwargs):
-        return self.jit_model(*args, **kwargs)
+from .misc_functions import preprocess_image, recreate_image, save_image
+from . import tb_utils as tbu
 
 
 class CNNLayerVisualization:
@@ -54,7 +15,7 @@ class CNNLayerVisualization:
     """
 
     def __init__(self, model, selected_layer, selected_filter):
-        print(model)
+        # print(model)
         self.model = model
         self.model.eval()
         self.selected_layer = selected_layer
@@ -70,7 +31,9 @@ class CNNLayerVisualization:
             self.conv_output = grad_out[0, self.selected_filter]
 
         # Hook the selected layer
-        self.model[self.selected_layer].register_forward_hook(hook_function)
+        tbu.get_from_module(
+            self.model, self.selected_layer
+        ).register_forward_hook(hook_function)
 
     def visualise_layer_with_hooks(self):
         # Hook the selected layer
@@ -85,7 +48,7 @@ class CNNLayerVisualization:
             optimizer.zero_grad()
             # Assign create image to a variable to move forward in the model
             x = processed_image
-            for index, layer in enumerate(self.model):
+            for index, layer in enumerate(self.model.children()):
                 # Forward pass layer by layer
                 # x is not used after this point because it is only needed to trigger
                 # the forward hook function
@@ -137,9 +100,8 @@ class CNNLayerVisualization:
             for index, layer in enumerate(self.model.children()):
                 # Forward pass layer by layer
                 x = layer(x)
-                if (
-                    index == self.selected_layer
-                ):  # Only need to forward until the selected layer is reached
+                if index == self.selected_layer:
+                    # Only need to forward until the selected layer is reached
                     # Now, x is the output of the selected layer
                     break
             # Here, we get the specific filter from the output of the convolution operation
@@ -175,46 +137,3 @@ class CNNLayerVisualization:
                     + ".jpg"
                 )
                 save_image(self.created_image, im_path)
-
-
-def get_jit_item(model, key):
-    counter = 0
-    if isinstance(key, int) and key >= 0:
-        for module in model.modules():
-            if counter == key:
-                return module
-
-            counter += 1
-
-    raise TypeError(f"Invalid key {key}")
-
-
-if __name__ == "__main__":
-    cnn_layer = 2
-    filter_pos = 5
-
-    # Example usage:
-    args = parse_args()
-
-    # Fully connected layer is not needed
-    if args.model_path:
-        pretrained_model = torch.jit.load(args.model_path)
-        # modules = [module for module in pretrained_model.modules()]
-    else:
-        pretrained_model = models.vgg16(pretrained=True)
-
-    # print(pretrained_model)
-    # pretrained_model.__getitem__ = get_jit_item
-    # print(pretrained_model)
-    # pretrained_model = SubscriptableJitModel(pretrained_model)
-    print(get_jit_item(pretrained_model, cnn_layer))
-    # print(pretrained_model.__getitem__(pretrained_model, 1))
-    # for index, layer in enumerate(pretrained_model.children()):
-    #     print(f"{index}: {layer}")
-    layer_vis = CNNLayerVisualization(pretrained_model, cnn_layer, filter_pos)
-
-    # Layer visualization with pytorch hooks
-    layer_vis.visualise_layer_with_hooks()
-
-    # Layer visualization without pytorch hooks
-    # layer_vis.visualise_layer_without_hooks()
