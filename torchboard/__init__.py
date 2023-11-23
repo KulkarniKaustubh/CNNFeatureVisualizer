@@ -1,1 +1,1 @@
-from .src.test_module import *
+from .torchboard.test_module import *
