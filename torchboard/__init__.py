@@ -1,1 +1,1 @@
-from .torchboard.test_module import *
+from torchboard.core import visualize_convs

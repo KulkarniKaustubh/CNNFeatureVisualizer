@@ -4,9 +4,9 @@ from torch import jit
 import torch.nn as nn
 from torchvision import models
 
-import sys
-
-sys.path.append("..")
+# import sys
+#
+# sys.path.append("..")
 
 import torchboard as tb
 
@@ -45,9 +45,11 @@ if __name__ == "__main__":
     # Create an instance of the model
     model = SmallCNN()
 
+    tb.visualize_convs(model)
+
     # model = models.vgg16(pretrained=True).features
-    layer_vis = tb.CNNLayerVisualization(model, 0, 5)
+    # layer_vis = tb.CNNLayerVisualization(model, 0, 5)
 
     # Layer visualization with pytorch hooks
     # layer_vis.visualise_layer_with_hooks()
-    layer_vis.visualise_layer_without_hooks()
+    # layer_vis.visualise_layer_without_hooks()

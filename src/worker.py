@@ -2,10 +2,15 @@ import os
 import numpy as np
 
 import torch
+import torch.nn as nn
 from torch.optim import Adam
 
-from .misc_functions import preprocess_image, recreate_image, save_image
-from . import tb_utils as tbu
+from torchboard.misc_functions import (
+    preprocess_image,
+    recreate_image,
+    save_image,
+)
+from torchboard import tb_utils as tbu
 
 
 class CNNLayerVisualization:
@@ -137,3 +142,14 @@ class CNNLayerVisualization:
                     + ".jpg"
                 )
                 save_image(self.created_image, im_path)
+
+def get_model_from_queue():
+    model = <>
+
+    cnn_layer_viz = CNNLayerVisualization(model, 0, 5)
+
+    # print("Visualizing with hooks.")
+    # cnn_layer_viz.visualise_layer_with_hooks()
+
+    print("Visualizing without hooks.")
+    cnn_layer_viz.visualise_layer_without_hooks()
