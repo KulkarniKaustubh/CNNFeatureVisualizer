@@ -12,8 +12,24 @@ from psycopg2 import sql
 import importlib
 import torch.nn as nn  # Include the necessary import
 import tempfile
+import redis
+from minio import Minio
 # from received_model_source_code import *
 conn = None
+# redisHost = os.getenv("REDIS_HOST") or "localhost"
+# redisPort = os.getenv("REDIS_PORT") or 6379
+redisHost = "localhost"
+redisPort = 6379
+redisClient = redis.StrictRedis(host=redisHost, port=redisPort, db=0)
+minioUser = "rootuser"
+minioPasswd = "rootpass123"
+# minioFinalAddress = minioHost + ":" + minioPort
+minioClient = Minio('localhost:9000',
+               secure=False,
+               access_key=minioUser,
+               secret_key=minioPasswd)
+bucketName = "queue"
+
 def get_model_output(model):
     model.eval()
     example_input = torch.ones((1, 10))
@@ -27,6 +43,7 @@ def hello():
 def testPostgresConnection():
         global conn
         try:
+                # Connection object for the case it is deployed on the container
                 # conn = psycopg2.connect(
                 #         host='postgres',
                 #         port=5432,
@@ -125,30 +142,46 @@ def get_rows():
 
 @app.route('/visualize', methods=['POST'])
 def upload_model():
+    bucketName = "queue"
     data = json.loads(request.form.get('data'))
     user_name = data['username']
     model_name = data['modelname']
     iteration_number = data['iterationNumber']
     uploaded_file = request.files['file']
     uploaded_file.save('uploaded_model.pt')
-    loaded_model = torch.jit.load('uploaded_model.pt')
-    output = get_model_output(model=loaded_model)
-    # Adding the entry to the postgres table
-    with conn.cursor() as cursor:
-        # Define the table name
-        table_name = "modeloutput"
+    file_location = user_name + '/' + model_name + '/' + str(iteration_number)
+    if minioClient.bucket_exists(bucketName):
+        print("Queue Bucket exists")
+    else:
+        minioClient.make_bucket(bucketName)
+        print("Queue Bucket did not exist. Bucket has been created")
+    print("Placing Model file in Queue Bucket")
+    result = minioClient.fput_object(bucketName, file_location, 'uploaded_model.pt')
+    print(
+            "created {0} object; etag: {1}, version-id: {2}".format(
+                result.object_name, result.etag, result.version_id,
+            )
+        )
+    redisClient.lpush('toWorkers', f" Location of the Model to be evaluated is: {file_location}")
+    print("Pushed to redis queue")
+#     loaded_model = torch.jit.load('uploaded_model.pt')
+#     output = get_model_output(model=loaded_model)
+#     # Code for adding a row to the Postgres Table
+#     with conn.cursor() as cursor:
+#         # Define the table name
+#         table_name = "modeloutput"
 
-        # Define the values for the new row
-        values = (user_name, model_name, iteration_number, output)
+#         # Define the values for the new row
+#         values = (user_name, model_name, iteration_number, output)
 
-        # Generate the INSERT INTO statement
-        insert_query = f"INSERT INTO {table_name} (username, modelname, iterationnumber, output) VALUES (%s, %s, %s, %s);"
+#         # Generate the INSERT INTO statement
+#         insert_query = f"INSERT INTO {table_name} (username, modelname, iterationnumber, output) VALUES (%s, %s, %s, %s);"
 
-        # Execute the INSERT INTO statement
-        cursor.execute(insert_query, values)
-# Commit the changes
-        conn.commit()
-    response_data = {"response": "Success", "output": output}
+#         # Execute the INSERT INTO statement
+#         cursor.execute(insert_query, values)
+# # Commit the changes
+#         conn.commit()
+    response_data = {"response": "Success"}
     return jsonify(response_data)
 # def instantiate_model(source_code, weights_file):
 #     # # Save the source code to a file
