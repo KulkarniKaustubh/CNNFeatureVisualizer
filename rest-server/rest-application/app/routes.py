@@ -264,3 +264,40 @@ def upload_model():
 
 #     response_data = {"response": "Success", "output": output.tolist()}
 #     return jsonify(response_data)
+
+@app.route('/visualize2', methods=['POST'])
+def upload_model_2():
+    data = json.loads(request.form.get('data'))
+    source_code = data['source_code']
+    uploaded_file = request.files['file']
+    uploaded_file.save('layer_weights.pth')
+    with open('received_model_source_code.py', 'w') as f:
+        f.write(source_code)
+
+    spec = importlib.util.spec_from_file_location("received_model_module", "received_model_source_code.py")
+    received_model_module = importlib.util.module_from_spec(spec)
+    received_model_module.__dict__['torch'] = torch
+    received_model_module.__dict__['nn'] = nn
+    spec.loader.exec_module(received_model_module)
+
+    # Get the actual class name dynamically
+    model_class_name = [name for name, obj in received_model_module.__dict__.items() if isinstance(obj, type)][0]
+
+    # Use the actual class name to instantiate the model
+    ReceivedModel = getattr(received_model_module, model_class_name)
+
+    # Create an instance of the received model class
+    received_model_instance = ReceivedModel()
+    layer_weights = torch.load('layer_weights.pth')
+
+    # Load each layer's weights back into the model
+    for name, param in received_model_instance.named_parameters():
+        if name in layer_weights:
+            param.data.copy_(layer_weights[name])
+    received_model_instance.to("mps")
+    output = get_model_output(received_model_instance)
+    print("Output : ", output)
+    response_data = {"response": "Success"}
+    return jsonify(response_data)
+
+
