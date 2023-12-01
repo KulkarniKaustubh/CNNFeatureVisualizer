@@ -1,155 +1,137 @@
+import subprocess
+import redis
+from minio import Minio
+import time
+import torchboard as tb
 import os
-import numpy as np
-
-import torch
-import torch.nn as nn
-from torch.optim import Adam
-
-from torchboard.misc_functions import (
-    preprocess_image,
-    recreate_image,
-    save_image,
-)
-from torchboard import tb_utils as tbu
+import glob
+import io
 
 
-class CNNLayerVisualization:
-    """
-    Produces an image that minimizes the loss of a convolution
-    operation for a specific layer and filter
-    """
+def init_redis() -> redis.StrictRedis:
+    redis_host = os.getenv("REDIS_HOST") or "localhost"
+    redis_port = os.getenv("REDIS_PORT") or 6379
 
-    def __init__(self, model, selected_layer, selected_filter):
-        # print(model)
-        self.model = model
-        self.model.eval()
-        self.selected_layer = selected_layer
-        self.selected_filter = selected_filter
-        self.conv_output = 0
-        # Create the folder to export images if not exists
-        if not os.path.exists("../generated"):
-            os.makedirs("../generated")
+    redis_client = redis.StrictRedis(host=redis_host, port=redis_port, db=0)
 
-    def hook_layer(self):
-        def hook_function(module, grad_in, grad_out):
-            # Gets the conv output of the selected filter (from selected layer)
-            self.conv_output = grad_out[0, self.selected_filter]
+    return redis_client
 
-        # Hook the selected layer
-        tbu.get_from_module(
-            self.model, self.selected_layer
-        ).register_forward_hook(hook_function)
 
-    def visualise_layer_with_hooks(self):
-        # Hook the selected layer
-        self.hook_layer()
-        # Generate a random image
-        random_image = np.uint8(np.random.uniform(150, 180, (224, 224, 3)))
-        # Process image and return variable
-        processed_image = preprocess_image(random_image, False)
-        # Define optimizer for the image
-        optimizer = Adam([processed_image], lr=0.1, weight_decay=1e-6)
-        for i in range(1, 31):
-            optimizer.zero_grad()
-            # Assign create image to a variable to move forward in the model
-            x = processed_image
-            for index, layer in enumerate(self.model.children()):
-                # Forward pass layer by layer
-                # x is not used after this point because it is only needed to trigger
-                # the forward hook function
-                x = layer(x)
-                # Only need to forward until the selected layer is reached
-                if index == self.selected_layer:
-                    # (forward hook function triggered)
-                    break
-            # Loss function is the mean of the output of the selected layer/filter
-            # We try to minimize the mean of the output of that specific filter
-            loss = -torch.mean(self.conv_output)
+def init_minio() -> Minio:
+    minio_host = os.getenv("MINIO_HOST") or "minio:9000"
+    minio_user = os.getenv("MINIO_USER") or "rootuser"
+    minio_passwd = os.getenv("MINIO_PASSWD") or "rootpass123"
+
+    minio_client = Minio(
+        minio_host,
+        secure=False,
+        access_key=minio_user,
+        secret_key=minio_passwd,
+    )
+
+    return minio_client
+
+
+def check_minio_objects(minio_client, bucket_name):
+    minio_objects = minio_client.list_objects(bucket_name)
+
+    if minio_objects is not None:
+        print(f"Objects: {minio_objects}")
+        for obj in minio_objects:
             print(
-                "Iteration:",
-                str(i),
-                "Loss:",
-                "{0:.2f}".format(loss.data.numpy()),
+                obj.bucket_name,
+                obj.object_name,
+                obj.last_modified,
+                obj.etag,
+                obj.size,
+                obj.content_type,
             )
-            # Backward
-            loss.backward()
-            # Update image
-            optimizer.step()
-            # Recreate image
-            self.created_image = recreate_image(processed_image)
-            # Save image
-            if i % 5 == 0:
-                im_path = (
-                    "../generated/layer_vis_l"
-                    + str(self.selected_layer)
-                    + "_f"
-                    + str(self.selected_filter)
-                    + "_iter"
-                    + str(i)
-                    + ".jpg"
-                )
-                save_image(self.created_image, im_path)
+    else:
+        print("Minio objects are empty or do not exist.")
 
-    def visualise_layer_without_hooks(self):
-        # Process image and return variable
-        # Generate a random image
-        random_image = np.uint8(np.random.uniform(150, 180, (224, 224, 3)))
-        # Process image and return variable
-        processed_image = preprocess_image(random_image, False)
-        # Define optimizer for the image
-        optimizer = Adam([processed_image], lr=0.1, weight_decay=1e-6)
-        for i in range(1, 31):
-            optimizer.zero_grad()
-            # Assign create image to a variable to move forward in the model
-            x = processed_image
-            for index, layer in enumerate(self.model.children()):
-                # Forward pass layer by layer
-                x = layer(x)
-                if index == self.selected_layer:
-                    # Only need to forward until the selected layer is reached
-                    # Now, x is the output of the selected layer
-                    break
-            # Here, we get the specific filter from the output of the convolution operation
-            # x is a tensor of shape 1x512x28x28.(For layer 17)
-            # So there are 512 unique filter outputs
-            # Following line selects a filter from 512 filters so self.conv_output will become
-            # a tensor of shape 28x28
-            self.conv_output = x[0, self.selected_filter]
-            # Loss function is the mean of the output of the selected layer/filter
-            # We try to minimize the mean of the output of that specific filter
-            loss = -torch.mean(self.conv_output)
-            print(
-                "Iteration:",
-                str(i),
-                "Loss:",
-                "{0:.2f}".format(loss.data.numpy()),
-            )
-            # Backward
-            loss.backward()
-            # Update image
-            optimizer.step()
-            # Recreate image
-            self.created_image = recreate_image(processed_image)
-            # Save image
-            if i % 5 == 0:
-                im_path = (
-                    "../generated/layer_vis_l"
-                    + str(self.selected_layer)
-                    + "_f"
-                    + str(self.selected_filter)
-                    + "_iter"
-                    + str(i)
-                    + ".jpg"
-                )
-                save_image(self.created_image, im_path)
 
 def get_model_from_queue():
-    model = <>
+    model = None
 
-    cnn_layer_viz = CNNLayerVisualization(model, 0, 5)
+    cnn_layer_viz = tb.visualizers.CNNLayerVisualization(model, 0, 5)
 
     # print("Visualizing with hooks.")
     # cnn_layer_viz.visualise_layer_with_hooks()
 
     print("Visualizing without hooks.")
     cnn_layer_viz.visualise_layer_without_hooks()
+
+
+if __name__ == "__main__":
+    redis_client = init_redis()
+    minio_client = init_minio()
+    print(minio_client)
+
+    bucket_name = "queue"
+    redis_queue = "toWorker"
+    output_bucket_name = "output"
+
+    if not minio_client.bucket_exists(bucket_name):
+        print(f"Create bucket {bucket_name}")
+        minio_client.make_bucket(bucket_name)
+
+    if not minio_client.bucket_exists(output_bucket_name):
+        print(f"Create bucket {output_bucket_name}")
+        minio_client.make_bucket(output_bucket_name)
+
+    # while True:
+    #     print("In while")
+    #     try:
+    #         print("Checking minio queue.")
+    #         check_minio_objects(minio_client, bucket_name)
+    #
+    #         print("Checking minio bucket output.")
+    #         check_minio_objects(minio_client, output_bucket_name)
+    #
+    #         print("Checking redis queue.")
+    #         work = redis_client.blpop(redis_queue, timeout=0)
+    #         print(work)
+    #
+    #         song_hash = work[1].decode("utf-8")
+    #         local_name = f"/data/input/{song_hash}.mp3"
+    #         print(work[1].decode("utf-8"))
+    #
+    #         print("Obtain song object from minio.")
+    #         resp = minio_client.fget_object(
+    #             "queue", work[1].decode("utf-8"), local_name
+    #         )
+    #
+    #         print("Running demucs command.")
+    #         subprocess.run(
+    #             [
+    #                 "python3",
+    #                 "-m",
+    #                 "demucs.separate",
+    #                 "--mp3",
+    #                 "--out",
+    #                 "/data/output",
+    #                 local_name,
+    #             ]
+    #         )
+    #
+    #         print("Uploading song")
+    #         for mp3 in glob.glob(f"/data/output/htdemucs/{song_hash}/*mp3"):
+    #             track_name = mp3.split("/")[-1]  # getting only the filename
+    #             obj_name = f"{song_hash}/{track_name}"
+    #             mp3_stream = io.BytesIO(open(mp3, "rb").read())
+    #
+    #             minio_client.put_object(
+    #                 output_bucket_name,
+    #                 obj_name,
+    #                 mp3_stream,
+    #                 mp3_stream.getbuffer().nbytes,
+    #             )
+    #             print(f"Uploaded object: {obj_name}")
+    #
+    #     except Exception as exp:
+    #         traceback.print_exc()
+    #         print(f"Exception raised in log loop: {str(exp)}")
+
+    while True:
+        print("Hello from the worker!")
+        time.sleep(2)
