@@ -1,10 +1,12 @@
 FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN apt update
 RUN apt install -y vim git ffmpeg sudo libsm6
 
 # upgrade pip
-RUN usr/bin/python3 -m pip install --upgrade pip
+RUN python3 -m pip install --upgrade pip
 
 # copy requirements
 COPY ./requirements.txt /requirements.txt

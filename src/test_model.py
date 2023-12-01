@@ -4,10 +4,6 @@ from torch import jit
 import torch.nn as nn
 from torchvision import models
 
-# import sys
-#
-# sys.path.append("..")
-
 import torchboard as tb
 
 
