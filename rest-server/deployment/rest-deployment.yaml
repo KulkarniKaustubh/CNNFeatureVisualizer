@@ -26,7 +26,7 @@ spec:
           value: dns
         - name: PYTHONUNBUFFERED
           value: "1"
-        - name: REDIS_SLAVE_SERVICE_HOST
+        - name: REDIS_HOST
           value: redis
         - name: PYTHONUNBUFFERED
           value: "1"
