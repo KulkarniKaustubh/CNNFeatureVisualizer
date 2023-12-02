@@ -1,7 +1,7 @@
 from app import app
 import json
 
-# import os
+import os
 # import sys
 from flask import (
     render_template,
@@ -26,23 +26,22 @@ import importlib
 import torch.nn as nn  # Include the necessary import
 import tempfile
 
-# import redis
-# from minio import Minio
+import redis
+from minio import Minio
 
-# from received_model_source_code import *
 conn = None
-# redisHost = os.getenv("REDIS_HOST") or "localhost"
-# redisPort = os.getenv("REDIS_PORT") or 6379
-# redisHost = "localhost"
-# redisPort = 6379
-# redisClient = redis.StrictRedis(host=redisHost, port=redisPort, db=0)
-# minioUser = "rootuser"
-# minioPasswd = "rootpass123"
-# # minioFinalAddress = minioHost + ":" + minioPort
-# minioClient = Minio('localhost:9000',
-#                secure=False,
-#                access_key=minioUser,
-#                secret_key=minioPasswd)
+redisHost = os.getenv("REDIS_HOST") or "localhost"
+redisPort = os.getenv("REDIS_PORT") or 6379
+minioHost = os.getenv("MINIO_HOST") or "localhost"
+minioPort = os.getenv("MINIO_PORT") or 9000
+redisClient = redis.StrictRedis(host=redisHost, port=redisPort, db=0)
+minioUser = "rootuser"
+minioPasswd = "rootpass123"
+minioFinalAddress = minioHost + ":" + minioPort
+minioClient = Minio(minioFinalAddress,
+               secure=False,
+               access_key=minioUser,
+               secret_key=minioPasswd)
 # bucketName = "queue"
 
 
@@ -164,25 +163,16 @@ def get_rows():
     response_data = {"response": "Success", "rows": rows}
     return jsonify(response_data)
 
-
-@app.route("/visualize", methods=["POST"])
-def upload_model():
-    bucketName = "queue"
-    data = json.loads(request.form.get("data"))
-    user_name = data["username"]
-    model_name = data["modelname"]
-    iteration_number = data["iterationNumber"]
-    uploaded_file = request.files["file"]
-    uploaded_file.save("uploaded_model.pt")
-    file_location = user_name + "/" + model_name + "/" + str(iteration_number)
-    if minioClient.bucket_exists(bucketName):
-        print("Queue Bucket exists")
+def make_minio_bucket(bucket_name):
+    if minioClient.bucket_exists(bucket_name):
+        print(f"{bucket_name} Bucket exists")
     else:
-        minioClient.make_bucket(bucketName)
-        print("Queue Bucket did not exist. Bucket has been created")
-    print("Placing Model file in Queue Bucket")
+        minioClient.make_bucket(bucket_name)
+        print(f"Bucket {bucket_name} has been created")
+
+def push_to_minio_bucket(bucket_name, minio_file_location, source_file_location):
     result = minioClient.fput_object(
-        bucketName, file_location, "uploaded_model.pt"
+        bucket_name, minio_file_location, source_file_location
     )
     print(
         "created {0} object; etag: {1}, version-id: {2}".format(
@@ -191,123 +181,19 @@ def upload_model():
             result.version_id,
         )
     )
-    redisClient.lpush(
-        "toWorkers",
-        f" Location of the Model to be evaluated is: {file_location}",
-    )
-    print("Pushed to redis queue")
-    #     loaded_model = torch.jit.load('uploaded_model.pt')
-    #     output = get_model_output(model=loaded_model)
-    #     # Code for adding a row to the Postgres Table
-    #     with conn.cursor() as cursor:
-    #         # Define the table name
-    #         table_name = "modeloutput"
-
-    #         # Define the values for the new row
-    #         values = (user_name, model_name, iteration_number, output)
-
-    #         # Generate the INSERT INTO statement
-    #         insert_query = f"INSERT INTO {table_name} (username, modelname, iterationnumber, output) VALUES (%s, %s, %s, %s);"
-
-    #         # Execute the INSERT INTO statement
-    #         cursor.execute(insert_query, values)
-    # # Commit the changes
-    #         conn.commit()
-    response_data = {"response": "Success"}
-    return jsonify(response_data)
-
-
-# def instantiate_model(source_code, weights_file):
-#     # # Save the source code to a file
-#     with open('received_model_source_code.py', 'w') as f:
-#         f.write(source_code)
-
-#     # Import the model class dynamically
-#     spec = importlib.util.spec_from_loader("ReceivedModel", loader=None)
-#     received_model = importlib.util.module_from_spec(spec)
-
-#     # Include necessary imports in the module's namespace
-#     received_model.__dict__['torch'] = torch
-#     received_model.__dict__['nn'] = nn
-
-#     exec(source_code, received_model.__dict__)
-
-#     # Get the actual class name dynamically
-#     model_class_name = [name for name, obj in received_model.__dict__.items() if isinstance(obj, type)][0]
-
-#     # Use the actual class name to instantiate the model
-#     ReceivedModel = getattr(received_model, model_class_name)
-
-#     # # Create an instance of the received model class
-#     received_model_instance = ReceivedModel()
-
-#     # Load the received model's weights
-#     received_model_instance.load_state_dict(torch.load(weights_file))
-
-#     return received_model_instance
-# def load_state_dict_from_file(file):
-#     # Save the file content to a temporary file
-#     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-#         temp_file.write(file.read())
-#         temp_file_path = temp_file.name
-
-#     # Load the state_dict from the temporary file
-#     state_dict = torch.load(temp_file_path)
-
-#     # Clean up the temporary file
-#     if temp_file_path:
-#         os.unlink(temp_file_path)
-
-#     return state_dict
-
-
-# @app.route('/upload', methods=['POST'])
-# def upload_model():
-#     # Get the source code and weights from the request
-#     source_code = request.form['source_code']
-#     weights_file = request.files['weights']
-#     with open('received_model_source_code.py', 'w') as f:
-#         f.write(source_code)
-
-#     spec = importlib.util.spec_from_file_location("received_model_module", "received_model_source_code.py")
-#     received_model_module = importlib.util.module_from_spec(spec)
-#     received_model_module.__dict__['torch'] = torch
-#     # received_model_module.__dict__['nn'] = nn
-#     spec.loader.exec_module(received_model_module)
-
-#     # Get the actual class name dynamically
-#     model_class_name = [name for name, obj in received_model_module.__dict__.items() if isinstance(obj, type)][0]
-
-#     # Use the actual class name to instantiate the model
-#     ReceivedModel = getattr(received_model_module, model_class_name)
-
-#     # Create an instance of the received model class
-#     received_model_instance = ReceivedModel()
-#     # received_model_module.__dict__['SimpleModel'] = ReceivedModel
-#     # spec.loader.exec_module(received_model_module)
-#     print(received_model_instance)
-#     print(model_class_name)
-#     # state_dict_buffer = io.BytesIO(weights_file.read())
-#     with torch.no_grad():
-#     # Load the received model's weights
-#         # received_model_instance.load_state_dict(torch.load(weights_file))
-#         received_model_instance.load_state_dict(load_state_dict_from_file(weights_file))
-
-#     # Run the forward pass to get the model output
-#     output = get_model_output(model=received_model_instance)
-
-#     response_data = {"response": "Success", "output": output.tolist()}
-#     return jsonify(response_data)
-
-
+    
 @app.route("/initialize", methods=["POST"])
 def init():
     data = json.loads(request.form.get("data"))
     source_code = data["model_source_code"]
-
-    with open("received_model_source_code.py", "w") as f:
+    source_code_file_location = "received_model_source_code.py"
+    with open(source_code_file_location, "w") as f:
         f.write(source_code)
-
+    model_class_name = data["model_class_name"]
+    bucket_name = "source-code"
+    minio_file_location = model_class_name
+    make_minio_bucket(bucket_name=bucket_name)
+    push_to_minio_bucket(bucket_name=bucket_name, minio_file_location=minio_file_location, source_file_location=source_code_file_location)
     response_data = {"response": "Success"}
     return jsonify(response_data)
 
@@ -315,37 +201,19 @@ def init():
 @app.route("/visualize2", methods=["POST"])
 def upload_model_2():
     uploaded_file = request.files["file"]
-    uploaded_file.save("layer_weights.pth")
-
-    spec = importlib.util.spec_from_file_location(
-        "received_model_module", "received_model_source_code.py"
+    layer_weights_file_location = "layer_weights.pth"
+    uploaded_file.save(layer_weights_file_location)
+    data = json.loads(request.form.get("data"))
+    model_class_name = data["model_class_name"]
+    iteration_number = data["iteration_number"]
+    bucket_name = "layer-weights"
+    minio_file_location = model_class_name + "/" + str(iteration_number)
+    make_minio_bucket(bucket_name=bucket_name)
+    push_to_minio_bucket(bucket_name=bucket_name, minio_file_location=minio_file_location, source_file_location=layer_weights_file_location)
+    redisClient.lpush(
+        "toWorkers",
+        f"Request for : {model_class_name}. Layer_Weights placed at: {minio_file_location}",
     )
-    received_model_module = importlib.util.module_from_spec(spec)
-    received_model_module.__dict__["torch"] = torch
-    received_model_module.__dict__["nn"] = nn
-    spec.loader.exec_module(received_model_module)
-
-    # Get the actual class name dynamically
-    model_class_name = [
-        name
-        for name, obj in received_model_module.__dict__.items()
-        if isinstance(obj, type)
-    ][0]
-
-    # Use the actual class name to instantiate the model
-    ReceivedModel = getattr(received_model_module, model_class_name)
-
-    # Create an instance of the received model class
-    received_model_instance = ReceivedModel()
-    layer_weights = torch.load("layer_weights.pth")
-
-    print("received model is: ", received_model_instance)
-
-    # Load each layer's weights back into the model
-    for name, param in received_model_instance.named_parameters():
-        param.data.copy_(layer_weights[name])
-    # received_model_instance.to("mps")
-    output = get_model_output(received_model_instance)
-    print("Output : ", output)
+    print("Pushed to redis queue")
     response_data = {"response": "Success"}
     return jsonify(response_data)
