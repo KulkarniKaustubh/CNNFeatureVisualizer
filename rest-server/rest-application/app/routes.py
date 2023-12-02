@@ -1,67 +1,89 @@
 from app import app
 import json
-import os
-import sys
-from flask import render_template, flash, redirect, request, make_response, Response, jsonify, send_file
-import io
-import hashlib
-import base64
+
+# import os
+# import sys
+from flask import (
+    render_template,
+    flash,
+    redirect,
+    request,
+    make_response,
+    Response,
+    jsonify,
+    send_file,
+)
+from flask import g
+
+# import io
+# import hashlib
+# import base64
 import torch
-import psycopg2
-from psycopg2 import sql
+
+# import psycopg2
+# from psycopg2 import sql
 import importlib
 import torch.nn as nn  # Include the necessary import
 import tempfile
-import redis
-from minio import Minio
+
+# import redis
+# from minio import Minio
+
 # from received_model_source_code import *
 conn = None
 # redisHost = os.getenv("REDIS_HOST") or "localhost"
 # redisPort = os.getenv("REDIS_PORT") or 6379
-redisHost = "localhost"
-redisPort = 6379
-redisClient = redis.StrictRedis(host=redisHost, port=redisPort, db=0)
-minioUser = "rootuser"
-minioPasswd = "rootpass123"
-# minioFinalAddress = minioHost + ":" + minioPort
-minioClient = Minio('localhost:9000',
-               secure=False,
-               access_key=minioUser,
-               secret_key=minioPasswd)
-bucketName = "queue"
+# redisHost = "localhost"
+# redisPort = 6379
+# redisClient = redis.StrictRedis(host=redisHost, port=redisPort, db=0)
+# minioUser = "rootuser"
+# minioPasswd = "rootpass123"
+# # minioFinalAddress = minioHost + ":" + minioPort
+# minioClient = Minio('localhost:9000',
+#                secure=False,
+#                access_key=minioUser,
+#                secret_key=minioPasswd)
+# bucketName = "queue"
+
 
 def get_model_output(model):
     model.eval()
-    example_input = torch.ones((1, 10))
+    example_input = torch.randn(1, 3, 255, 255)
     with torch.no_grad():
         output = model(example_input)
-    return output.item()
-@app.route('/', methods=['GET'])
+    return output
+
+
+@app.route("/", methods=["GET"])
 def hello():
-    return 'Hi. Welcome to the rest-server'
-@app.route('/postgres/connect', methods=['GET'])
+    return "Hi. Welcome to the rest-server"
+
+
+@app.route("/postgres/connect", methods=["GET"])
 def testPostgresConnection():
-        global conn
-        try:
-                # Connection object for the case it is deployed on the container
-                # conn = psycopg2.connect(
-                #         host='postgres',
-                #         port=5432,
-                #         user='admin',
-                #         password='psltest',
-                #         dbname='postgresdb'
-                # )
-                conn = psycopg2.connect(
-                        host='localhost',
-                        port=5432,
-                        user='admin',
-                        password='psltest',
-                        dbname='postgresdb'
-                )
-                return "Fuck yeah!"
-        except Exception as e:
-              return "Exception: " + e
-@app.route('/postgres/createTable', methods = ['POST'])
+    global conn
+    try:
+        # Connection object for the case it is deployed on the container
+        # conn = psycopg2.connect(
+        #         host='postgres',
+        #         port=5432,
+        #         user='admin',
+        #         password='psltest',
+        #         dbname='postgresdb'
+        # )
+        conn = psycopg2.connect(
+            host="localhost",
+            port=5432,
+            user="admin",
+            password="psltest",
+            dbname="postgresdb",
+        )
+        return "Fuck yeah!"
+    except Exception as e:
+        return "Exception: " + e
+
+
+@app.route("/postgres/createTable", methods=["POST"])
 def create_table():
     try:
         with conn.cursor() as cursor:
@@ -80,7 +102,9 @@ def create_table():
             create_table_query = sql.SQL("CREATE TABLE {} ({});").format(
                 sql.Identifier(table_name),
                 sql.SQL(", ").join(
-                    sql.SQL("{} {}").format(sql.Identifier(column[0]), sql.SQL(column[1]))
+                    sql.SQL("{} {}").format(
+                        sql.Identifier(column[0]), sql.SQL(column[1])
+                    )
                     for column in columns
                 ),
             )
@@ -92,12 +116,11 @@ def create_table():
         response_data = {"response": "Success. Table has been created"}
         return jsonify(response_data)
     except Exception as e:
-        response_data = {"response": "Failed", "Exception" : e}
+        response_data = {"response": "Failed", "Exception": e}
         return jsonify(response_data)
 
 
-
-@app.route('/postgres/getTable', methods = ['GET'])
+@app.route("/postgres/getTable", methods=["GET"])
 def get_table():
     with conn.cursor() as cursor:
         query = """
@@ -107,20 +130,21 @@ def get_table():
     AND table_type = 'BASE TABLE';
     """
 
-    # Execute the query
+        # Execute the query
         cursor.execute(query)
 
-    # Fetch all the results
+        # Fetch all the results
         table_names = cursor.fetchall()
 
-    # Display the result
+        # Display the result
         for table_name in table_names:
             print(table_name[0])
     cursor.close()
     response_data = {"response": "Success"}
     return jsonify(response_data)
 
-@app.route('/postgres/getRows', methods = ['GET'])
+
+@app.route("/postgres/getRows", methods=["GET"])
 def get_rows():
     with conn.cursor() as cursor:
         table_name = "modeloutput"
@@ -134,55 +158,65 @@ def get_rows():
         # Fetch all rows
         rows = cursor.fetchall()
         for row in rows:
-             print(row)
-# Display the result
+            print(row)
+    # Display the result
     cursor.close()
-    response_data = {"response": "Success", 'rows' : rows}
+    response_data = {"response": "Success", "rows": rows}
     return jsonify(response_data)
 
-@app.route('/visualize', methods=['POST'])
+
+@app.route("/visualize", methods=["POST"])
 def upload_model():
     bucketName = "queue"
-    data = json.loads(request.form.get('data'))
-    user_name = data['username']
-    model_name = data['modelname']
-    iteration_number = data['iterationNumber']
-    uploaded_file = request.files['file']
-    uploaded_file.save('uploaded_model.pt')
-    file_location = user_name + '/' + model_name + '/' + str(iteration_number)
+    data = json.loads(request.form.get("data"))
+    user_name = data["username"]
+    model_name = data["modelname"]
+    iteration_number = data["iterationNumber"]
+    uploaded_file = request.files["file"]
+    uploaded_file.save("uploaded_model.pt")
+    file_location = user_name + "/" + model_name + "/" + str(iteration_number)
     if minioClient.bucket_exists(bucketName):
         print("Queue Bucket exists")
     else:
         minioClient.make_bucket(bucketName)
         print("Queue Bucket did not exist. Bucket has been created")
     print("Placing Model file in Queue Bucket")
-    result = minioClient.fput_object(bucketName, file_location, 'uploaded_model.pt')
+    result = minioClient.fput_object(
+        bucketName, file_location, "uploaded_model.pt"
+    )
     print(
-            "created {0} object; etag: {1}, version-id: {2}".format(
-                result.object_name, result.etag, result.version_id,
-            )
+        "created {0} object; etag: {1}, version-id: {2}".format(
+            result.object_name,
+            result.etag,
+            result.version_id,
         )
-    redisClient.lpush('toWorkers', f" Location of the Model to be evaluated is: {file_location}")
+    )
+    redisClient.lpush(
+        "toWorkers",
+        f" Location of the Model to be evaluated is: {file_location}",
+    )
     print("Pushed to redis queue")
-#     loaded_model = torch.jit.load('uploaded_model.pt')
-#     output = get_model_output(model=loaded_model)
-#     # Code for adding a row to the Postgres Table
-#     with conn.cursor() as cursor:
-#         # Define the table name
-#         table_name = "modeloutput"
+    #     loaded_model = torch.jit.load('uploaded_model.pt')
+    #     output = get_model_output(model=loaded_model)
+    #     # Code for adding a row to the Postgres Table
+    #     with conn.cursor() as cursor:
+    #         # Define the table name
+    #         table_name = "modeloutput"
 
-#         # Define the values for the new row
-#         values = (user_name, model_name, iteration_number, output)
+    #         # Define the values for the new row
+    #         values = (user_name, model_name, iteration_number, output)
 
-#         # Generate the INSERT INTO statement
-#         insert_query = f"INSERT INTO {table_name} (username, modelname, iterationnumber, output) VALUES (%s, %s, %s, %s);"
+    #         # Generate the INSERT INTO statement
+    #         insert_query = f"INSERT INTO {table_name} (username, modelname, iterationnumber, output) VALUES (%s, %s, %s, %s);"
 
-#         # Execute the INSERT INTO statement
-#         cursor.execute(insert_query, values)
-# # Commit the changes
-#         conn.commit()
+    #         # Execute the INSERT INTO statement
+    #         cursor.execute(insert_query, values)
+    # # Commit the changes
+    #         conn.commit()
     response_data = {"response": "Success"}
     return jsonify(response_data)
+
+
 # def instantiate_model(source_code, weights_file):
 #     # # Save the source code to a file
 #     with open('received_model_source_code.py', 'w') as f:
@@ -191,11 +225,11 @@ def upload_model():
 #     # Import the model class dynamically
 #     spec = importlib.util.spec_from_loader("ReceivedModel", loader=None)
 #     received_model = importlib.util.module_from_spec(spec)
-    
+
 #     # Include necessary imports in the module's namespace
 #     received_model.__dict__['torch'] = torch
 #     received_model.__dict__['nn'] = nn
-    
+
 #     exec(source_code, received_model.__dict__)
 
 #     # Get the actual class name dynamically
@@ -265,39 +299,53 @@ def upload_model():
 #     response_data = {"response": "Success", "output": output.tolist()}
 #     return jsonify(response_data)
 
-@app.route('/visualize2', methods=['POST'])
-def upload_model_2():
-    data = json.loads(request.form.get('data'))
-    source_code = data['source_code']
-    uploaded_file = request.files['file']
-    uploaded_file.save('layer_weights.pth')
-    with open('received_model_source_code.py', 'w') as f:
+
+@app.route("/initialize", methods=["POST"])
+def init():
+    data = json.loads(request.form.get("data"))
+    source_code = data["model_source_code"]
+
+    with open("received_model_source_code.py", "w") as f:
         f.write(source_code)
 
-    spec = importlib.util.spec_from_file_location("received_model_module", "received_model_source_code.py")
+    response_data = {"response": "Success"}
+    return jsonify(response_data)
+
+
+@app.route("/visualize2", methods=["POST"])
+def upload_model_2():
+    uploaded_file = request.files["file"]
+    uploaded_file.save("layer_weights.pth")
+
+    spec = importlib.util.spec_from_file_location(
+        "received_model_module", "received_model_source_code.py"
+    )
     received_model_module = importlib.util.module_from_spec(spec)
-    received_model_module.__dict__['torch'] = torch
-    received_model_module.__dict__['nn'] = nn
+    received_model_module.__dict__["torch"] = torch
+    received_model_module.__dict__["nn"] = nn
     spec.loader.exec_module(received_model_module)
 
     # Get the actual class name dynamically
-    model_class_name = [name for name, obj in received_model_module.__dict__.items() if isinstance(obj, type)][0]
+    model_class_name = [
+        name
+        for name, obj in received_model_module.__dict__.items()
+        if isinstance(obj, type)
+    ][0]
 
     # Use the actual class name to instantiate the model
     ReceivedModel = getattr(received_model_module, model_class_name)
 
     # Create an instance of the received model class
     received_model_instance = ReceivedModel()
-    layer_weights = torch.load('layer_weights.pth')
+    layer_weights = torch.load("layer_weights.pth")
+
+    print("received model is: ", received_model_instance)
 
     # Load each layer's weights back into the model
     for name, param in received_model_instance.named_parameters():
-        if name in layer_weights:
-            param.data.copy_(layer_weights[name])
-    received_model_instance.to("mps")
+        param.data.copy_(layer_weights[name])
+    # received_model_instance.to("mps")
     output = get_model_output(received_model_instance)
     print("Output : ", output)
     response_data = {"response": "Success"}
     return jsonify(response_data)
-
-

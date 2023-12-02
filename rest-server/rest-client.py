@@ -8,6 +8,7 @@ import os
 import requests
 import base64
 import inspect
+
 REST = os.getenv("REST") or "localhost:80"
 
 
@@ -27,6 +28,7 @@ class SimpleModel(torch.nn.Module):
         x = self.sigmoid(x)
         return x
 
+
 def get_model():
     # Create an instance of the model
     input_size = 10  # Adjust this based on your input size
@@ -40,12 +42,14 @@ def get_model():
     print(output)
     return model
 
+
 def get_model_output(model):
     model.eval()
     example_input = torch.ones((1, 10))
     with torch.no_grad():
         output = model(example_input)
     return output.item()
+
 
 def sendmodel(reqmethod, endpoint, debug=True):
     model = get_model()
@@ -58,12 +62,12 @@ def sendmodel(reqmethod, endpoint, debug=True):
 
     # Create a dictionary with your fields
     data = {
-        'username': username,
-        'modelname': model_name,
-        'iterationNumber': iteration_number,
+        "username": username,
+        "modelname": model_name,
+        "iterationNumber": iteration_number,
     }
-    files = {'file': open(file_path, 'rb')}
-    payload = {'data': json.dumps(data)}
+    files = {"file": open(file_path, "rb")}
+    payload = {"data": json.dumps(data)}
     # source_code_file_path='temp.py'
     # weights_file_path='temp_weights.pth'
     # with open(source_code_file_path, 'w') as f:
@@ -77,7 +81,9 @@ def sendmodel(reqmethod, endpoint, debug=True):
     # # files = {'weights': open(weights_file_path, 'rb')}
     # files = {'weights': state_dict_buffer}
     # data = {'source_code': model_source_code}
-    response = reqmethod(f"http://{REST}/{endpoint}", files=files, data = payload)
+    response = reqmethod(
+        f"http://{REST}/{endpoint}", files=files, data=payload
+    )
     os.remove(file_path)
     if response.status_code == 200:
         jsonResponse = json.dumps(response.json(), indent=4, sort_keys=True)
@@ -85,39 +91,40 @@ def sendmodel(reqmethod, endpoint, debug=True):
         return
     else:
         print(
-            f"response code is {response.status_code}, raw response is {response.text}")
+            f"response code is {response.status_code}, raw response is {response.text}"
+        )
         return response.text
+
 
 def sendmodel2(reqmethod, endpoint, debug=True):
     model = get_model()
-    file_path = 'layer_weights.pth'
+    file_path = "layer_weights.pth"
     layer_weights = {}
     for name, param in model.named_parameters():
         layer_weights[name] = param.clone().detach().cpu()
 
-# Save the dictionary containing layer weights
+    # Save the dictionary containing layer weights
     torch.save(layer_weights, file_path)
     # Define additional fields
     username = "example_user"
     model_name = "example_model"
     iteration_number = 1
 
-    source_code_file_path='temp.py'
-    with open(source_code_file_path, 'w') as f:
+    source_code_file_path = "temp.py"
+    with open(source_code_file_path, "w") as f:
         f.write(inspect.getsource(SimpleModel))
-    with open(source_code_file_path, 'r') as f:
+    with open(source_code_file_path, "r") as f:
         model_source_code = f.read()
     # Create a dictionary with your fields
     data = {
-        'username': username,
-        'modelname': model_name,
-        'iterationNumber': iteration_number,
-        'source_code' : model_source_code
-
+        "username": username,
+        "modelname": model_name,
+        "iterationNumber": iteration_number,
+        "source_code": model_source_code,
     }
 
     # weights_file_path='temp_weights.pth'
-    # 
+    #
     # torch.save(model, weights_file_path)
     # with open(source_code_file_path, 'r') as f:
     #     model_source_code = f.read()
@@ -128,14 +135,15 @@ def sendmodel2(reqmethod, endpoint, debug=True):
     # files = {'weights': state_dict_buffer}
     # data = {'source_code': model_source_code}
 
-    
-    files = {'file': open(file_path, 'rb')}
-    payload = {'data': json.dumps(data)}
-    
+    files = {"file": open(file_path, "rb")}
+    payload = {"data": json.dumps(data)}
+
     # # files = {'weights': open(weights_file_path, 'rb')}
     # files = {'weights': state_dict_buffer}
     # data = {'source_code': model_source_code}
-    response = reqmethod(f"http://{REST}/{endpoint}", files=files, data = payload)
+    response = reqmethod(
+        f"http://{REST}/{endpoint}", files=files, data=payload
+    )
     os.remove(file_path)
     if response.status_code == 200:
         jsonResponse = json.dumps(response.json(), indent=4, sort_keys=True)
@@ -143,13 +151,17 @@ def sendmodel2(reqmethod, endpoint, debug=True):
         return
     else:
         print(
-            f"response code is {response.status_code}, raw response is {response.text}")
+            f"response code is {response.status_code}, raw response is {response.text}"
+        )
         return response.text
+
 
 def run():
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be
     # used in circumstances in which the with statement does not fit the needs
     # of the code.
-    sendmodel2(requests.post,'visualize2')
+    sendmodel2(requests.post, "visualize2")
+
+
 if __name__ == "__main__":
     run()

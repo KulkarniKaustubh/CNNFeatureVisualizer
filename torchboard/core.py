@@ -1,15 +1,49 @@
+from typing import Type
 import torch.nn as nn
-import requests
 import torch
 import os
 import json
+import requests
+import inspect
 
-REST = os.getenv("REST") or "localhost:5000"
+import torchboard.rest as rest
 
 
-def send_model(model, reqmethod, endpoint, debug=True):
-    file_path = "temp.pt"
-    torch.jit.save(torch.jit.script(model), file_path)
+def _get_model_source_code(model_class: Type) -> str:
+    source_code_file_path = "temp.py"
+    with open(source_code_file_path, "w") as f:
+        f.write(inspect.getsource(model_class))
+    with open(source_code_file_path, "r") as f:
+        model_source_code = f.read()
+
+    return model_source_code
+
+
+def init(project: str, model_class: Type, **model_class_args) -> None:
+    endpoint = "initialize"
+
+    data = {
+        "project": project,
+        "model_class_name": model_class.__name__,
+        "model_source_code": _get_model_source_code(model_class),
+        "model_class_args": {**model_class_args},
+    }
+    payload = {"data": json.dumps(data)}
+
+    rest._request_response(endpoint, requests.post, payload)
+
+
+def _send_model(model) -> None:
+    endpoint = "visualize2"
+
+    file_path = "layer_weights.pth"
+    layer_weights = {}
+    for name, param in model.named_parameters():
+        layer_weights[name] = param.clone().detach().cpu()
+
+    # Save the dictionary containing layer weights
+    torch.save(layer_weights, file_path)
+
     # Define additional fields
     username = "example_user"
     model_name = "example_model"
@@ -23,21 +57,19 @@ def send_model(model, reqmethod, endpoint, debug=True):
     }
     files = {"file": open(file_path, "rb")}
     payload = {"data": json.dumps(data)}
-    response = reqmethod(
-        f"http://{REST}/{endpoint}", files=files, data=payload
-    )
-    os.remove(file_path)
 
-    if response.status_code == 200:
-        jsonResponse = json.dumps(response.json(), indent=4, sort_keys=True)
-        print(jsonResponse)
-        return
-    else:
-        print(
-            f"response code is {response.status_code}, raw response is {response.text}"
-        )
-        return response.text
+    rest._request_response(endpoint, requests.post, payload, files)
+
+    os.remove(file_path)
 
 
 def visualize_convs(model: nn.Module) -> None:
-    send_model(model, requests.post, "visualize")
+    _send_model(model)
+
+
+def log(param_dict: dict) -> None:
+    endpoint = "logs"
+
+    data = {**param_dict}
+
+    rest._request_response(endpoint, requests.post, data)
