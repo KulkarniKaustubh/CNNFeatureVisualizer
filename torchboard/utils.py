@@ -2,6 +2,18 @@ import torch
 import torch.nn as nn
 
 
+def load_model_weights(model: nn.Module, weights_file: str) -> nn.Module:
+    layer_weights = torch.load(weights_file)
+
+    print("Received model is: ", model)
+
+    # Load each layer's weights back into the model
+    for name, param in model.named_parameters():
+        param.data.copy_(layer_weights[name])
+
+    return model
+
+
 def get_from_module(selected_module: nn.Module, idx: int) -> nn.Module:
     """
     Method to get a specific sub-module from a pytorch model or module.

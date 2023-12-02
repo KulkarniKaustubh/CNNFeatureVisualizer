@@ -7,6 +7,8 @@ import os
 import glob
 import io
 
+from torchboard.utils import load_model_weights
+
 
 def init_redis() -> redis.StrictRedis:
     redis_host = os.getenv("REDIS_HOST") or "localhost"
@@ -50,16 +52,25 @@ def check_minio_objects(minio_client, bucket_name):
         print("Minio objects are empty or do not exist.")
 
 
-def get_model_from_queue():
+def read_queue() -> nn.Module:
     model = None
+    weights_file = None
 
-    cnn_layer_viz = tb.visualizers.CNNLayerVisualization(model, 0, 5)
+    return model, weights_file
 
-    # print("Visualizing with hooks.")
-    # cnn_layer_viz.visualise_layer_with_hooks()
 
-    print("Visualizing without hooks.")
-    cnn_layer_viz.visualise_layer_without_hooks()
+def main():
+    while True:
+        model, weights_file = read_queue()
+        model = load_model_weights(model, weights_file)
+
+        cnn_layer_viz = tb.visualizers.CNNLayerVisualization(model, 0, 5)
+
+        # print("Visualizing with hooks.")
+        # cnn_layer_viz.visualise_layer_with_hooks()
+
+        print("Visualizing without hooks.")
+        cnn_layer_viz.visualise_layer_without_hooks()
 
 
 if __name__ == "__main__":

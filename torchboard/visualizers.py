@@ -1,17 +1,16 @@
 import os
-import time
 import numpy as np
 
 import torch
 import torch.nn as nn
 from torch.optim import Adam
 
-from torchboard.misc_functions import (
+from torchboard.img_functions import (
     preprocess_image,
     recreate_image,
     save_image,
 )
-from torchboard import tb_utils as tbu
+import torchboard.utils as tbu
 
 
 class CNNLayerVisualization:
