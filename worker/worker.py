@@ -141,8 +141,8 @@ def main():
 
         cnn_layer_viz = tb.visualizers.CNNLayerVisualization(model, 0, 5)
 
-        # print("Visualizing with hooks.")
-        # cnn_layer_viz.visualise_layer_with_hooks()
+        print("Visualizing with hooks.")
+        cnn_layer_viz.visualise_layer_with_hooks()
 
         print("Visualizing without hooks.")
         cnn_layer_viz.visualise_layer_without_hooks()
