@@ -11,7 +11,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: 64m
 spec:
   rules:
-  - host: localhost
+  - host: 34.134.140.40.nip.io
     http:
       paths:
       - path: /
@@ -20,7 +20,7 @@ spec:
           service:
             name: cnn-feature-server
             port:
-              number: 80
+              number: 5002
 #
 # Your ingress rules here
 #

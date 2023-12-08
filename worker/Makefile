@@ -1,11 +1,11 @@
 VERSION=v1
-DOCKERUSER=kaustubhkulkarni
+DOCKERUSER=jayantduneja1234
 
 build:
-	docker build -f Dockerfile -t cnn-worker .
+	docker build -f Dockerfile -t cnn-worker-gke .
 
 push:
-	docker tag cnn-worker $(DOCKERUSER)/cnn-worker:$(VERSION)
-	docker push $(DOCKERUSER)/cnn-worker:$(VERSION)
-	docker tag cnn-worker $(DOCKERUSER)/cnn-worker:latest
-	docker push $(DOCKERUSER)/cnn-worker:latest
+	docker tag cnn-worker-gke $(DOCKERUSER)/cnn-worker-gke:$(VERSION)
+	docker push $(DOCKERUSER)/cnn-worker-gke:$(VERSION)
+	docker tag cnn-worker-gke $(DOCKERUSER)/cnn-worker-gke:latest
+	docker push $(DOCKERUSER)/cnn-worker-gke:latest

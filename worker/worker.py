@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 
 from torchboard.utils import load_model_weights
-
+import importlib
 
 def _get_model(source_code, layer_weights_file):
     spec = importlib.util.spec_from_file_location(
@@ -126,11 +126,9 @@ def get_model_from_queue(
             source_code=source_code_file_location,
             layer_weights_file=layer_weights_file_path,
         )
-    finally:
-        if response is not None:
-            response.close()
-            response.release_conn()
-
+    except Exception as e:
+        print("Exception: ", e)
+    
     return model
 
 
