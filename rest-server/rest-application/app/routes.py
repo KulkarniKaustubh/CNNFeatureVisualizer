@@ -2,6 +2,7 @@ from app import app
 import json
 
 import os
+
 # import sys
 from flask import (
     render_template,
@@ -16,7 +17,10 @@ from flask import (
 from flask import g
 
 # import io
-# import hashlib
+import hashlib
+import time
+import random
+
 # import base64
 import torch
 
@@ -38,10 +42,12 @@ redisClient = redis.StrictRedis(host=redisHost, port=redisPort, db=0)
 minioUser = "rootuser"
 minioPasswd = "rootpass123"
 minioFinalAddress = minioHost + ":" + minioPort
-minioClient = Minio(minioFinalAddress,
-               secure=False,
-               access_key=minioUser,
-               secret_key=minioPasswd)
+minioClient = Minio(
+    minioFinalAddress,
+    secure=False,
+    access_key=minioUser,
+    secret_key=minioPasswd,
+)
 # bucketName = "queue"
 
 
@@ -163,6 +169,7 @@ def get_rows():
     response_data = {"response": "Success", "rows": rows}
     return jsonify(response_data)
 
+
 def make_minio_bucket(bucket_name):
     if minioClient.bucket_exists(bucket_name):
         print(f"{bucket_name} Bucket exists")
@@ -170,7 +177,10 @@ def make_minio_bucket(bucket_name):
         minioClient.make_bucket(bucket_name)
         print(f"Bucket {bucket_name} has been created")
 
-def push_to_minio_bucket(bucket_name, minio_file_location, source_file_location):
+
+def push_to_minio_bucket(
+    bucket_name, minio_file_location, source_file_location
+):
     result = minioClient.fput_object(
         bucket_name, minio_file_location, source_file_location
     )
@@ -181,20 +191,45 @@ def push_to_minio_bucket(bucket_name, minio_file_location, source_file_location)
             result.version_id,
         )
     )
-    
+
+
+def _generate_hash() -> str:
+    data = f"{time.time()}{random.random()}"
+
+    # Generate SHA-1 hash
+    sha1_hash = hashlib.sha1(data.encode()).hexdigest()
+
+    # Truncate to 12 characters
+    truncated_hash = sha1_hash[:12]
+
+    return truncated_hash
+
+
 @app.route("/initialize", methods=["POST"])
 def init():
     data = json.loads(request.form.get("data"))
+
+    project_name = data["project"].strip()
+    project_name = project_name.replace(" ", "-")
+    project_name += f"-{_generate_hash()}"
+
     source_code = data["model_source_code"]
     source_code_file_location = "received_model_source_code.py"
     with open(source_code_file_location, "w") as f:
         f.write(source_code)
+
     model_class_name = data["model_class_name"]
     bucket_name = "source-code"
     minio_file_location = model_class_name
+
     make_minio_bucket(bucket_name=bucket_name)
-    push_to_minio_bucket(bucket_name=bucket_name, minio_file_location=minio_file_location, source_file_location=source_code_file_location)
+    push_to_minio_bucket(
+        bucket_name=bucket_name,
+        minio_file_location=minio_file_location,
+        source_file_location=source_code_file_location,
+    )
     response_data = {"response": "Success"}
+
     return jsonify(response_data)
 
 
@@ -209,7 +244,11 @@ def upload_model_2():
     bucket_name = "layer-weights"
     minio_file_location = model_class_name + "/" + str(iteration_number)
     make_minio_bucket(bucket_name=bucket_name)
-    push_to_minio_bucket(bucket_name=bucket_name, minio_file_location=minio_file_location, source_file_location=layer_weights_file_location)
+    push_to_minio_bucket(
+        bucket_name=bucket_name,
+        minio_file_location=minio_file_location,
+        source_file_location=layer_weights_file_location,
+    )
     redisClient.lpush(
         "toWorkers",
         f"Request for : {model_class_name}. Layer_Weights placed at: {minio_file_location}",
