@@ -98,17 +98,19 @@ def get_model_from_queue(
     source_code_file_location = "received_model_source_code.py"
     layer_weights_file_path = "layer_weights.pth"
 
-    work = redis_client.blpop(redis_queue, timeout=0)
-
-    model_name = work[1].decode("utf-8").split(".")[0].split(":")[1].strip()
-    layer_weights_minio_path = (
-        work[1].decode("utf-8").split(".")[1].split(":")[1].strip()
-    )
-
     model = None
     response = None
 
     try:
+        work = redis_client.blpop(redis_queue, timeout=0)
+
+        model_name = (
+            work[1].decode("utf-8").split(".")[0].split(":")[1].strip()
+        )
+        layer_weights_minio_path = (
+            work[1].decode("utf-8").split(".")[1].split(":")[1].strip()
+        )
+
         print("Model Name : ", model_name)
         print("Layer_Weights Minio Path: ", layer_weights_minio_path)
         response = minio_client.fget_object(
@@ -151,10 +153,9 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as exp:
-        print(f"Exception raised in main(): {str(exp)}")
+    main()
+    # except Exception as exp:
+    #     print(f"Exception raised in main(): {str(exp)}")
 
     # bucket_name = "queue"
     # redis_queue = "toWorker"
