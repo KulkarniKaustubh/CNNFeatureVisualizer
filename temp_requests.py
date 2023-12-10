@@ -91,9 +91,25 @@ def insert_to_training_metrics():
     print(f"Status Code: {status_code}")
     print("Response:", response_data)
 
+def get_losses():
+    url = 'http://localhost:5000/postgres/getLosses'
+    headers = {'Content-Type': 'application/json'}
+
+    data = {
+        "username": "john_doe",
+        "model_hash": "67890^&*()"
+    }
+
+    response = requests.post(url, json=data, headers=headers)
+
+    print(response.status_code)
+    print(response.json())
+
+
 # create_user_table()
 # create_model_hashes_table()
 # create_training_metrics_table()
 # insert_to_users()
 # insert_to_model_hashes()
 # insert_to_training_metrics()
+get_losses()
