@@ -75,6 +75,7 @@ def log(metric_dict: dict) -> None:
     ---------
     metric_dict : dictionary of metrics to track
         the keys can be from the following:
+            epoch
             train-loss
             train-acc
             val-loss
@@ -85,6 +86,7 @@ def log(metric_dict: dict) -> None:
     endpoint = "logs"
 
     supported_metrics = [
+        "epoch",
         "train-loss",
         "train-acc",
         "val-loss",
