@@ -209,9 +209,9 @@ def _generate_hash() -> str:
 def init():
     data = json.loads(request.form.get("data"))
 
-    project_name = data["project"].strip()
-    project_name = project_name.replace(" ", "-")
-    project_name += f"-{_generate_hash()}"
+    project_id = data["project_id"].strip()
+    project_id = project_id.replace(" ", "-")
+    project_id += f"-{_generate_hash()}"
 
     source_code = data["model_source_code"]
     source_code_file_location = "received_model_source_code.py"
