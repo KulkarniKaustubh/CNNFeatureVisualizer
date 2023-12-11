@@ -67,9 +67,37 @@ def visualize_convs(model: nn.Module) -> None:
     _send_model(model)
 
 
-def log(param_dict: dict) -> None:
+def log(metric_dict: dict) -> None:
+    """
+    Method to log training metrics.
+
+    Arguments
+    ---------
+    metric_dict : dictionary of metrics to track
+        the keys can be from the following:
+            train-loss
+            train-acc
+            val-loss
+            val-acc
+            test-loss
+            test-acc
+    """
     endpoint = "logs"
 
-    data = {**param_dict}
+    supported_metrics = [
+        "train-loss",
+        "train-acc",
+        "val-loss",
+        "val-acc",
+        "test-loss",
+        "test-acc",
+    ]
+
+    for metric in metric_dict.keys():
+        assert (
+            metric in supported_metrics
+        ), f"{metric} logging is not supported."
+
+    data = {**metric_dict}
 
     rest._request_response(endpoint, requests.post, data)

@@ -14,6 +14,28 @@ def load_model_weights(model: nn.Module, weights_file: str) -> nn.Module:
     return model
 
 
+def get_conv_layer_idx_dict(model: nn.Module) -> dict:
+    """
+    Method to obtain conv layer information given an nn.Module.
+
+    Arguments
+    ---------
+    model: the model from which to obtain conv layer information
+
+    Returns
+    -------
+    dict: contains the conv layer information
+        keys -> conv layer indices, values -> output channels
+    """
+    conv_layer_idx_dict = {}
+
+    for i, module in enumerate(model.modules()):
+        if isinstance(module, nn.Conv2d):
+            conv_layer_idx_dict[i] = module.out_channels
+
+    return conv_layer_idx_dict
+
+
 def get_from_module(selected_module: nn.Module, idx: int) -> nn.Module:
     """
     Method to get a specific sub-module from a pytorch model or module.

@@ -1,17 +1,13 @@
-from typing import Tuple
-import subprocess
 import redis
 from minio import Minio
-import time
 import torchboard as tb
 import os
-import glob
-import io
+import importlib
 
 import torch
 import torch.nn as nn
 
-from torchboard.utils import load_model_weights
+import torchboard.utils as tbu
 
 
 def _get_model(source_code, layer_weights_file):
@@ -36,7 +32,7 @@ def _get_model(source_code, layer_weights_file):
     # Create an instance of the received model class
     received_model_instance = ReceivedModel()
 
-    received_model_instance = load_model_weights(
+    received_model_instance = tbu.load_model_weights(
         received_model_instance, layer_weights_file
     )
 
@@ -136,6 +132,25 @@ def get_model_from_queue(
     return model
 
 
+def run_visualizations(model: nn.Module) -> None:
+    conv_layer_idx_dict = tbu.get_conv_layer_idx_dict(model)
+
+    for idx in conv_layer_idx_dict:
+        for channel in range(conv_layer_idx_dict[idx]):
+            cnn_layer_viz = tb.visualizers.CNNLayerVisualization(
+                model, idx, channel
+            )
+
+            print("Visualizing with hooks.")
+            cnn_layer_viz.visualise_layer_with_hooks()
+
+            print("Visualizing without hooks.")
+            cnn_layer_viz.visualise_layer_without_hooks()
+
+            # remove object from memory
+            del cnn_layer_viz
+
+
 def main():
     redis_client = init_redis()
     minio_client = init_minio()
@@ -143,85 +158,8 @@ def main():
     while True:
         model = get_model_from_queue(redis_client, minio_client)
 
-        cnn_layer_viz = tb.visualizers.CNNLayerVisualization(model, 0, 5)
-
-        # print("Visualizing with hooks.")
-        # cnn_layer_viz.visualise_layer_with_hooks()
-
-        print("Visualizing without hooks.")
-        cnn_layer_viz.visualise_layer_without_hooks()
+        run_visualizations(model)
 
 
 if __name__ == "__main__":
     main()
-    # except Exception as exp:
-    #     print(f"Exception raised in main(): {str(exp)}")
-
-    # bucket_name = "queue"
-    # redis_queue = "toWorker"
-    # output_bucket_name = "output"
-    #
-    # if not minio_client.bucket_exists(bucket_name):
-    #     print(f"Create bucket {bucket_name}")
-    #     minio_client.make_bucket(bucket_name)
-    #
-    # if not minio_client.bucket_exists(output_bucket_name):
-    #     print(f"Create bucket {output_bucket_name}")
-    #     minio_client.make_bucket(output_bucket_name)
-
-    # while True:
-    #     print("In while")
-    #     try:
-    #         print("Checking minio queue.")
-    #         check_minio_objects(minio_client, bucket_name)
-    #
-    #         print("Checking minio bucket output.")
-    #         check_minio_objects(minio_client, output_bucket_name)
-    #
-    #         print("Checking redis queue.")
-    #         work = redis_client.blpop(redis_queue, timeout=0)
-    #         print(work)
-    #
-    #         song_hash = work[1].decode("utf-8")
-    #         local_name = f"/data/input/{song_hash}.mp3"
-    #         print(work[1].decode("utf-8"))
-    #
-    #         print("Obtain song object from minio.")
-    #         resp = minio_client.fget_object(
-    #             "queue", work[1].decode("utf-8"), local_name
-    #         )
-    #
-    #         print("Running demucs command.")
-    #         subprocess.run(
-    #             [
-    #                 "python3",
-    #                 "-m",
-    #                 "demucs.separate",
-    #                 "--mp3",
-    #                 "--out",
-    #                 "/data/output",
-    #                 local_name,
-    #             ]
-    #         )
-    #
-    #         print("Uploading song")
-    #         for mp3 in glob.glob(f"/data/output/htdemucs/{song_hash}/*mp3"):
-    #             track_name = mp3.split("/")[-1]  # getting only the filename
-    #             obj_name = f"{song_hash}/{track_name}"
-    #             mp3_stream = io.BytesIO(open(mp3, "rb").read())
-    #
-    #             minio_client.put_object(
-    #                 output_bucket_name,
-    #                 obj_name,
-    #                 mp3_stream,
-    #                 mp3_stream.getbuffer().nbytes,
-    #             )
-    #             print(f"Uploaded object: {obj_name}")
-    #
-    #     except Exception as exp:
-    #         traceback.print_exc()
-    #         print(f"Exception raised in log loop: {str(exp)}")
-
-    # while True:
-    #     print("Hello from the worker!")
-    #     time.sleep(2)
