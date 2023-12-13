@@ -2,10 +2,10 @@ VERSION=v1
 DOCKERUSER=jayantduneja1234
 
 build:
-	docker build -f Dockerfile -t rest-server-temp .
+	docker build -f Dockerfile -t rest-server .
 
 push:
-	docker tag rest-server-temp $(DOCKERUSER)/rest-server-temp:$(VERSION)
-	docker push $(DOCKERUSER)/rest-server-temp:$(VERSION)
-	docker tag rest-server-temp $(DOCKERUSER)/rest-server-temp:latest
-	docker push $(DOCKERUSER)/rest-server-temp:latest
+	docker tag rest-server $(DOCKERUSER)/rest-server:$(VERSION)
+	docker push $(DOCKERUSER)/rest-server:$(VERSION)
+	docker tag rest-server $(DOCKERUSER)/rest-server:latest
+	docker push $(DOCKERUSER)/rest-server:latest
