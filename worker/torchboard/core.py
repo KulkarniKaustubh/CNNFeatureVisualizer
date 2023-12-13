@@ -76,7 +76,7 @@ def init(
 
     model_hash_json_data = {
         "table_name": "model_hashes",
-        "rows": [[project_id, username]],
+        "rows": [[username, project_id]],
     }
     rest._request_response(
         endpoint=postgres_endpoint,
@@ -137,7 +137,9 @@ def log(metric_dict: dict) -> None:
             test-loss
             test-acc
     """
-    endpoint = "logs"
+    global _username, _project_id
+
+    endpoint = "postgres/insertRows"
 
     supported_metrics = [
         "epoch",
@@ -154,6 +156,26 @@ def log(metric_dict: dict) -> None:
             metric in supported_metrics
         ), f"{metric} logging is not supported."
 
-    data = {**metric_dict}
-
-    rest._request_response(endpoint, requests.post, data)
+    log_json_data = {
+        "table_name": "training_metrics",
+        "rows": [
+            [
+                _username,
+                _project_id,
+                metric_dict.get("epoch", None),
+                metric_dict.get("train-loss", None),
+                metric_dict.get("train-acc", None),
+                metric_dict.get("val-loss", None),
+                metric_dict.get("val-acc", None),
+                metric_dict.get("test-loss", None),
+                metric_dict.get("test-acc", None),
+            ]
+        ],
+    }
+    rest._request_response(
+        endpoint=endpoint,
+        req_method=requests.post,
+        data=None,
+        files=None,
+        json=log_json_data,
+    )
