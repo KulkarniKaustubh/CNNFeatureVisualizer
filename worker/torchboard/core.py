@@ -4,6 +4,7 @@ import torch
 import os
 import json
 import requests
+import hashlib
 import inspect
 
 import torchboard.rest as rest
@@ -19,10 +20,26 @@ def _get_model_source_code(model_class: Type) -> str:
     return model_source_code
 
 
+def _generate_model_hash() -> str:
+    data = f"{time.time()}{random.random()}"
+
+    # Generate SHA-1 hash
+    sha1_hash = hashlib.sha1(data.encode()).hexdigest()
+
+    # Truncate to 12 characters
+    truncated_hash = sha1_hash[:12]
+
+    return truncated_hash
+
+
 def init(
     username: str, project_id: str, model_class: Type, **model_class_args
 ) -> None:
     endpoint = "initialize"
+
+    project_id = data["project_id"].strip()
+    project_id = project_id.replace(" ", "-")
+    project_id += f"-{_generate_model_hash()}"
 
     data = {
         "username": username,

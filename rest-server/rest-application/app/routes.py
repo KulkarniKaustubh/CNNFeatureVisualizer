@@ -18,19 +18,15 @@ from flask import g
 from flask import request, jsonify
 
 
-
 # import io
 import hashlib
 import time
 import random
 
 # import base64
-import torch
-
 import psycopg2
 from psycopg2 import sql
 import importlib
-import torch.nn as nn  # Include the necessary import
 import tempfile
 
 import redis
@@ -43,9 +39,9 @@ minioHost = os.getenv("MINIO_HOST") or "localhost"
 minioPort = os.getenv("MINIO_PORT") or "9000"
 postgresHost = os.getenv("POSTGRES_HOST") or "localhost"
 postgresPort = os.getenv("POSTGRES_PORT") or 5432
-postgresUser = 'admin'
-postgresPassword = 'psltest'
-postgresDbname = 'postgresdb'
+postgresUser = "admin"
+postgresPassword = "psltest"
+postgresDbname = "postgresdb"
 redisClient = redis.StrictRedis(host=redisHost, port=redisPort, db=0)
 minioUser = "rootuser"
 minioPasswd = "rootpass123"
@@ -56,17 +52,18 @@ minioClient = Minio(
     access_key=minioUser,
     secret_key=minioPasswd,
 )
-def get_model_output(model):
-    model.eval()
-    example_input = torch.randn(1, 3, 255, 255)
-    with torch.no_grad():
-        output = model(example_input)
-    return output
+# def get_model_output(model):
+#     model.eval()
+#     example_input = torch.randn(1, 3, 255, 255)
+#     with torch.no_grad():
+#         output = model(example_input)
+#     return output
 
 
 @app.route("/", methods=["GET"])
 def hello():
     return "Hi. Welcome to the rest-server"
+
 
 # Move this to the Init of the Rest-Server. We should always connect to Postgres first before doing all the operations
 # Function to establish a PostgreSQL connection
@@ -84,10 +81,11 @@ def connect_to_postgres():
     except Exception as e:
         print("Exception: " + str(e))
 
+
 # Execute the connect_to_postgres function before the first request
 @app.before_request
 def before_request():
-    if not hasattr(app, 'postgres_connected'):
+    if not hasattr(app, "postgres_connected"):
         connect_to_postgres()
         app.postgres_connected = True
 
@@ -118,6 +116,7 @@ def create_table_helper(table_name, columns):
         response_data = {"response": "Failed", "Exception": str(e)}
         return jsonify(response_data)
 
+
 @app.route("/postgres/createTable", methods=["POST"])
 def create_custom_table():
     try:
@@ -128,7 +127,9 @@ def create_custom_table():
 
         # Check if required data is present
         if not table_name or not columns:
-            raise ValueError("Table name and columns are required in the request body")
+            raise ValueError(
+                "Table name and columns are required in the request body"
+            )
 
         # Call the create_table function with the provided parameters
         response = create_table_helper(table_name, columns)
@@ -137,7 +138,8 @@ def create_custom_table():
     except Exception as e:
         response_data = {"response": "Failed", "Exception": str(e)}
         return jsonify(response_data)
-    
+
+
 @app.route("/postgres/getSchema", methods=["POST"])
 def get_schema():
     try:
@@ -165,7 +167,9 @@ def get_schema():
 
             # Display the result
             for column_info in columns_info:
-                print(f"Column Name: {column_info[0]}, Data Type: {column_info[1]}")
+                print(
+                    f"Column Name: {column_info[0]}, Data Type: {column_info[1]}"
+                )
 
         cursor.close()
         response_data = {"response": "Success"}
@@ -175,6 +179,8 @@ def get_schema():
         conn.rollback()
         response_data = {"response": "Failed", "Exception": str(e)}
         return jsonify(response_data)
+
+
 @app.route("/postgres/deleteTable", methods=["POST"])
 def delete_table():
     try:
@@ -188,16 +194,18 @@ def delete_table():
 
         with conn.cursor() as cursor:
             # Generate the DROP TABLE statement
-            drop_table_query = sql.SQL("DROP TABLE IF EXISTS {} CASCADE;").format(
-                sql.Identifier(table_name)
-            )
+            drop_table_query = sql.SQL(
+                "DROP TABLE IF EXISTS {} CASCADE;"
+            ).format(sql.Identifier(table_name))
 
             # Execute the DROP TABLE statement
             cursor.execute(drop_table_query)
             conn.commit()
 
         cursor.close()
-        response_data = {"response": f"Success. Table '{table_name}' has been deleted"}
+        response_data = {
+            "response": f"Success. Table '{table_name}' has been deleted"
+        }
         return jsonify(response_data)
 
     except Exception as e:
@@ -250,7 +258,9 @@ def insert_rows():
 
         # Check if required data is present
         if not table_name or not rows_to_insert:
-            raise ValueError("Table name and rows are required in the request body")
+            raise ValueError(
+                "Table name and rows are required in the request body"
+            )
 
         with conn.cursor() as cursor:
             # Generate the INSERT query with the provided table name and rows
@@ -277,6 +287,7 @@ def insert_rows():
         response_data = {"response": "Failed", "Exception": str(e)}
         return jsonify(response_data)
 
+
 @app.route("/postgres/getLosses", methods=["POST"])
 def get_losses_epochs():
     try:
@@ -287,14 +298,15 @@ def get_losses_epochs():
 
         # Check if required data is present
         if not model_hash or not username:
-            raise ValueError("Both model_hash and username are required in the request body")
+            raise ValueError(
+                "Both model_hash and username are required in the request body"
+            )
 
         with conn.cursor() as cursor:
             # Define the query to select losses and epochs for a specific model_hash and username
-            query = sql.SQL("SELECT epoch, losses FROM training_metrics WHERE model_hash = {} AND username = {};").format(
-                sql.Literal(model_hash),
-                sql.Literal(username)
-            )
+            query = sql.SQL(
+                "SELECT epoch, losses FROM training_metrics WHERE model_hash = {} AND username = {};"
+            ).format(sql.Literal(model_hash), sql.Literal(username))
 
             # Execute the query
             cursor.execute(query)
@@ -304,8 +316,8 @@ def get_losses_epochs():
 
         cursor.close()
         # Format the result as a list of dictionaries
-        epochs=[]
-        losses=[]
+        epochs = []
+        losses = []
         result = [{"epoch": row[0], "losses": row[1]} for row in rows]
         epochs = [row[0] for row in rows]
         losses = [row[1] for row in rows]
@@ -344,25 +356,9 @@ def push_to_minio_bucket(
     )
 
 
-def _generate_hash() -> str:
-    data = f"{time.time()}{random.random()}"
-
-    # Generate SHA-1 hash
-    sha1_hash = hashlib.sha1(data.encode()).hexdigest()
-
-    # Truncate to 12 characters
-    truncated_hash = sha1_hash[:12]
-
-    return truncated_hash
-
-
 @app.route("/initialize", methods=["POST"])
 def init():
     data = json.loads(request.form.get("data"))
-
-    project_id = data["project_id"].strip()
-    project_id = project_id.replace(" ", "-")
-    project_id += f"-{_generate_hash()}"
 
     source_code = data["model_source_code"]
     source_code_file_location = "received_model_source_code.py"
