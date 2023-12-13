@@ -38,6 +38,10 @@ spec:
           value: minio
         - name: MINIO_PORT
           value: "9000"
+        - name : POSTGRES_HOST
+          value : postgres
+        - name : POSTGRES_PORT
+          value : "5432"
           # If your cluster config does not include a dns service, then to
           # instead access environment variables to find service host
           # info, comment out the 'value: dns' line above, and uncomment the

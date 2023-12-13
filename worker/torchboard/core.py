@@ -19,11 +19,11 @@ def _get_model_source_code(model_class: Type) -> str:
     return model_source_code
 
 
-def init(project: str, model_class: Type, **model_class_args) -> None:
+def init(project_id: str, model_class: Type, **model_class_args) -> None:
     endpoint = "initialize"
 
     data = {
-        "project": project,
+        "project_id": project_id,
         "model_class_name": model_class.__name__,
         "model_source_code": _get_model_source_code(model_class),
         "model_class_args": {**model_class_args},
@@ -67,9 +67,39 @@ def visualize_convs(model: nn.Module) -> None:
     _send_model(model)
 
 
-def log(param_dict: dict) -> None:
+def log(metric_dict: dict) -> None:
+    """
+    Method to log training metrics.
+
+    Arguments
+    ---------
+    metric_dict : dictionary of metrics to track
+        the keys can be from the following:
+            epoch
+            train-loss
+            train-acc
+            val-loss
+            val-acc
+            test-loss
+            test-acc
+    """
     endpoint = "logs"
 
-    data = {**param_dict}
+    supported_metrics = [
+        "epoch",
+        "train-loss",
+        "train-acc",
+        "val-loss",
+        "val-acc",
+        "test-loss",
+        "test-acc",
+    ]
+
+    for metric in metric_dict.keys():
+        assert (
+            metric in supported_metrics
+        ), f"{metric} logging is not supported."
+
+    data = {**metric_dict}
 
     rest._request_response(endpoint, requests.post, data)
