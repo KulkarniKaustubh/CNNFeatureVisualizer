@@ -63,7 +63,9 @@ if __name__ == "__main__":
     # Create an instance of the model
     model = SmallCNN()
 
-    tb.init(project_id="test project", model_class=SmallCNN)
+    tb.init(
+        username="kaustubh", project_id="test project", model_class=SmallCNN
+    )
 
     example_input = torch.randn(1, 3, 255, 255)
     output = model(example_input)
