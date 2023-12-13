@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: python-rest-server
-        image: jayantduneja1234/rest-server:latest
+        image: jayantduneja1234/rest-server-gke:latest
         resources:
           requests:
             cpu: 100m

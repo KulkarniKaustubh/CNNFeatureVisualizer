@@ -3,7 +3,7 @@ import json
 import requests
 import os
 
-REST = os.getenv("REST") or "localhost:80"
+REST = os.getenv("REST") or "34.134.140.40.nip.io:80"
 
 
 def _request_response(
