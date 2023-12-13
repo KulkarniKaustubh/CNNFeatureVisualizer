@@ -52,9 +52,27 @@ def init(
 
     rest._request_response(endpoint, requests.post, payload)
 
-    json_data = {"table_name": "users", "rows": [[username]]}
+    postgres_endpoint = "postgres/insertRows"
+
+    user_json_data = {"table_name": "users", "rows": [[username]]}
     rest._request_response(
-        "postgres/insertRows", requests.pose, None, None, json=json_data
+        endpoint=postgres_endpoint,
+        req_method=requests.pose,
+        data=None,
+        files=None,
+        json=user_json_data,
+    )
+
+    model_hash_json_data = {
+        "table_name": "model_hashes",
+        "rows": [[username, project_id]],
+    }
+    rest._request_response(
+        endpoint=postgres_endpoint,
+        req_method=requests.pose,
+        data=None,
+        files=None,
+        json=model_hash_json_data,
     )
 
 
