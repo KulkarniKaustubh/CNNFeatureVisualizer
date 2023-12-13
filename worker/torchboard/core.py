@@ -52,6 +52,11 @@ def init(
 
     rest._request_response(endpoint, requests.post, payload)
 
+    json_data = {"table_name": "users", "rows": [[username]]}
+    rest._request_response(
+        "postgres/insertRows", requests.pose, None, None, json=json_data
+    )
+
 
 def _send_model(model) -> None:
     endpoint = "visualize2"
