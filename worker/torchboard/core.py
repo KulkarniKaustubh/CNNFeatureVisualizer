@@ -151,26 +151,13 @@ def log(metric_dict: dict) -> None:
         "test-acc",
     ]
 
-    for metric in metric_dict.keys():
-        assert (
-            metric in supported_metrics
-        ), f"{metric} logging is not supported."
+    row_list = [_username, _project_id]
+    for metric in supported_metrics:
+        row_list.append(metric_dict.get(metric, None))
 
     log_json_data = {
         "table_name": "training_metrics",
-        "rows": [
-            [
-                _username,
-                _project_id,
-                metric_dict.get("epoch", None),
-                metric_dict.get("train-loss", None),
-                metric_dict.get("train-acc", None),
-                metric_dict.get("val-loss", None),
-                metric_dict.get("val-acc", None),
-                metric_dict.get("test-loss", None),
-                metric_dict.get("test-acc", None),
-            ]
-        ],
+        "rows": [row_list],
     }
     rest._request_response(
         endpoint=endpoint,
