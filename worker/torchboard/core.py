@@ -19,10 +19,13 @@ def _get_model_source_code(model_class: Type) -> str:
     return model_source_code
 
 
-def init(project_id: str, model_class: Type, **model_class_args) -> None:
+def init(
+    username: str, project_id: str, model_class: Type, **model_class_args
+) -> None:
     endpoint = "initialize"
 
     data = {
+        "username": username,
         "project_id": project_id,
         "model_class_name": model_class.__name__,
         "model_source_code": _get_model_source_code(model_class),
