@@ -10,6 +10,12 @@ import inspect
 import torchboard.rest as rest
 
 
+# re-initialized after every tb.init() call, so the model
+# hash changes for every run, maintaining the username
+_username = None
+_project_id = None
+
+
 def _get_model_source_code(model_class: Type) -> str:
     source_code_file_path = "temp.py"
     with open(source_code_file_path, "w") as f:
@@ -35,11 +41,16 @@ def _generate_model_hash() -> str:
 def init(
     username: str, project_id: str, model_class: Type, **model_class_args
 ) -> None:
+    global _username, _project_id
+
     endpoint = "initialize"
 
     project_id = data["project_id"].strip()
     project_id = project_id.replace(" ", "-")
     project_id += f"-{_generate_model_hash()}"
+
+    _username = username
+    _project_id = project_id
 
     data = {
         "username": username,
@@ -57,7 +68,7 @@ def init(
     user_json_data = {"table_name": "users", "rows": [[username]]}
     rest._request_response(
         endpoint=postgres_endpoint,
-        req_method=requests.pose,
+        req_method=requests.post,
         data=None,
         files=None,
         json=user_json_data,
@@ -65,11 +76,11 @@ def init(
 
     model_hash_json_data = {
         "table_name": "model_hashes",
-        "rows": [[username, project_id]],
+        "rows": [[project_id, username]],
     }
     rest._request_response(
         endpoint=postgres_endpoint,
-        req_method=requests.pose,
+        req_method=requests.post,
         data=None,
         files=None,
         json=model_hash_json_data,
