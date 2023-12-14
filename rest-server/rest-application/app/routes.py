@@ -2,6 +2,8 @@ from app import app
 
 import json
 import os
+import matplotlib.pyplot as plt
+import shutil
 
 from flask import request, jsonify, send_file
 
@@ -392,15 +394,137 @@ def upload_model_2():
     response_data = {"response": "Success"}
     return jsonify(response_data)
 
+
 @app.route("/downloadVis", methods=["POST"])
-def downloadVis():
+def download_vis():
     data = json.loads(request.form.get("data"))
+
+    username = data["username"]
     project_id = data["project_id"]
-    minio_file_location = f"{project_id}.zip"
+
+    file_location = f"{username}-{project_id}-generated.zip"
     bucket_name = "visualizations"
-    zip_file_location = "generated_vis.zip"
+
     response = minioClient.fget_object(
-            bucket_name, minio_file_location, zip_file_location
+        bucket_name, file_location, file_location
     )
-    print("Recieved Layer Weights in location: ", minio_file_location)
-    return send_file(zip_file_location, as_attachment=True, download_name='generated_visualizations.zip')
+    print("Recieved Layer Weights in location: ", file_location)
+
+    return send_file(
+        file_location,
+        as_attachment=True,
+        download_name="generated_visualizations.zip",
+    )
+
+
+def _plot_graph(
+    x_values: list, y_values: list, title: str, x_label: str, y_label: str
+):
+    fig, ax = plt.subplots()
+
+    ax.plot(x_values, y_values, legend="Data")
+
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
+
+    ax.legend()
+
+    return fig
+
+
+def create_graphs(graphs_dir: str, username: str, project_id: str) -> None:
+    if not os.path.exists(graphs_dir):
+        os.makedirs(graphs_dir)
+
+    try:
+        # Check if required data is present
+        with conn.cursor() as cursor:
+            # Define the query to select losses and epochs for a specific model_hash and username
+            query = sql.SQL(
+                "SELECT * FROM training_metrics WHERE username = {} AND model_hash = {};"
+            ).format(sql.Literal(project_id), sql.Literal(username))
+
+            # Execute the query
+            cursor.execute(query)
+
+            # Fetch all rows
+            rows = cursor.fetchall()
+
+            metrics = [
+                "train-loss",
+                "train-acc",
+                "val-loss",
+                "val-acc",
+                "test-loss",
+                "test-acc",
+            ]
+
+            metric_dict = {
+                "epochs": [row[2] for row in rows],
+                "train_loss": [row[3] for row in rows],
+                "train_acc": [row[4] for row in rows],
+                "val_loss": [row[5] for row in rows],
+                "val_acc": [row[6] for row in rows],
+                "test_loss": [row[7] for row in rows],
+                "test_acc": [row[8] for row in rows],
+            }
+
+            for metric in metrics:
+                if (
+                    metric_dict[metric] is not None
+                    and len(metric_dict[metric]) != 0
+                ):
+                    filtered_epochs = [
+                        epoch
+                        for epoch, metric in zip(
+                            metric_dict["epochs"], metric_dict[metric]
+                        )
+                        if metric_value is not None
+                    ]
+                    filtered_metric = [
+                        metric_value
+                        for metric_value in metric_dict[metric]
+                        if metric_value is not None
+                    ]
+                    fig = _plot_graph(
+                        filtered_epochs,
+                        filtered_metric,
+                        f"{metric} graph",
+                        "epoch",
+                        metric,
+                    )
+
+                    print(
+                        f"Saving graph for {metric} in {graphs_dir}/{metric}-graph.png"
+                    )
+                    fig.savefig(f"{graphs_dir}/{metric}-graph.png")
+
+                    del fig
+
+        cursor.close()
+        print("Created graphs.")
+    except Exception as e:
+        conn.rollback()
+        print("Failed creating graphs: ", e)
+
+
+@app.route("/downloadGraphs", methods=["POST"])
+def download_graphs():
+    data = json.loads(request.form.get("data"))
+
+    username = data["username"]
+    project_id = data["project_id"]
+
+    graphs_dir = f"{username}-{project_id}-graphs.zip"
+    create_graphs(graphs_dir, username, project_id)
+
+    graphs_zip_location = f"{username}-{project_id}-graphs.zip"
+    shutil.make_archive(graphs_zip_location, "zip", graphs_dir)
+
+    print("Sending graphs zip file.")
+    return send_file(
+        graphs_zip_location,
+        as_attachment=True,
+        download_name="generated_graphs.zip",
+    )
