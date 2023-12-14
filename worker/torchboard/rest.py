@@ -1,9 +1,9 @@
 from typing import Callable
-import json
+import json as jsonlib
 import requests
 import os
 
-REST = os.getenv("REST") or "34.134.140.40.nip.io:80"
+REST = os.getenv("REST") or "34.121.134.170.nip.io:80"
 
 
 def _request_response(
@@ -19,7 +19,7 @@ def _request_response(
     )
 
     if response.status_code == 200:
-        jsonResponse = json.dumps(response.json(), indent=4, sort_keys=True)
+        jsonResponse = jsonlib.dumps(response.json(), indent=4, sort_keys=True)
         if debug:
             print(jsonResponse)
     else:
