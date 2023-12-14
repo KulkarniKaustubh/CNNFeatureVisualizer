@@ -102,9 +102,7 @@ def get_model_from_queue(
 
     try:
         work = redis_client.blpop(redis_queue, timeout=0)
-        user_name = (
-            work[1].decode("utf-8").split(".")[0].split(":")[1].strip()
-        )
+        user_name = work[1].decode("utf-8").split(".")[0].split(":")[1].strip()
         # model_name = (
         #     work[1].decode("utf-8").split(".")[0].split(":")[1].strip()
         # )
@@ -168,6 +166,7 @@ def push_to_minio_bucket(
         )
     )
 
+
 def send_visualizations(minio_client: Minio, project_id) -> None:
     print(
         f"Zipping {_generated_visualizations_dir} to {_generated_visualizations_dir}.zip"
@@ -176,10 +175,12 @@ def send_visualizations(minio_client: Minio, project_id) -> None:
     bucket_name = "visualizations"
     minio_file_location = f"{project_id}.zip"
     source_file_location = f"{_generated_visualizations_dir}.zip"
-    push_to_minio_bucket(minio_client=minio_client,
-                         bucket_name=bucket_name,
-                         minio_file_location=minio_file_location,
-                         source_file_location=source_file_location)
+    push_to_minio_bucket(
+        minio_client=minio_client,
+        bucket_name=bucket_name,
+        minio_file_location=minio_file_location,
+        source_file_location=source_file_location,
+    )
     # minio_client.fput_object()
 
     return
@@ -218,6 +219,7 @@ def create_graphs(metric_dict: dict) -> None:
                 )
                 fig.savefig(f"{graphs_dir}/{metric}-graph.png")
 
+                del fig
     return
 
 
@@ -245,7 +247,9 @@ def main():
     minio_client = init_minio()
 
     while True:
-        model,user_name, project_id= get_model_from_queue(redis_client, minio_client)
+        model, user_name, project_id = get_model_from_queue(
+            redis_client, minio_client
+        )
         print(f"{project_id}.zip")
         # metric_dict = get_metric_dict_from_queue(redis_client, minio_client)
 

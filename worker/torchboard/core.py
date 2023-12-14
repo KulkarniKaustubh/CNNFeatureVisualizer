@@ -90,6 +90,7 @@ def init(
 
 def _send_model(model) -> None:
     global _username, _project_id
+
     endpoint = "visualize2"
 
     file_path = "layer_weights.pth"
@@ -166,3 +167,11 @@ def log(metric_dict: dict) -> None:
         files=None,
         json=log_json_data,
     )
+
+
+def download_graphs(dest_path: str):
+    pass
+
+
+def download_visualizations(dest_path: str):
+    pass
