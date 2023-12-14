@@ -6,6 +6,8 @@ import json
 import requests
 import hashlib
 import inspect
+import time
+import random
 
 import torchboard.rest as rest
 
@@ -45,8 +47,7 @@ def init(
 
     endpoint = "initialize"
 
-    project_id = data["project_id"].strip()
-    project_id = project_id.replace(" ", "-")
+    project_id = project_id.strip().replace(" ", "-")
     project_id += f"-{_generate_model_hash()}"
 
     _username = username
