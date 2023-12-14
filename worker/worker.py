@@ -3,12 +3,14 @@ from minio import Minio
 import torchboard as tb
 import os
 import importlib
+import shutil
 
 import torch
 import torch.nn as nn
 
 
 import torchboard.utils as tbu
+from torchboard.visualizers import _generated_visualizations_dir
 
 
 def _get_model(source_code, layer_weights_file):
@@ -127,8 +129,71 @@ def get_model_from_queue(
         )
     except Exception as e:
         print("Exception: ", e)
-    
+
     return model
+
+
+def get_metric_dict_from_queue(
+    redis_client: redis.StrictRedis, minio_client: Minio
+) -> dict:
+    return {}
+
+
+def _zip_generated_visualizations() -> None:
+    shutil.make_archive(
+        f"{_generated_visualizations_dir}.zip",
+        "zip",
+        _generated_visualizations_dir,
+    )
+
+    return
+
+
+def send_visualizations(minio_client: Minio) -> None:
+    print(
+        f"Zipping {_generated_visualizations_dir} to {_generated_visualizations_dir}.zip"
+    )
+    _zip_generated_visualizations()
+
+    # minio_client.fput_object()
+
+    return
+
+
+def send_graphs(minio_client: Minio) -> None:
+    return
+
+
+def create_graphs(metric_dict: dict) -> None:
+    graphs_dir = "/graphs"
+    if not os.path.exists(graphs_dir):
+        os.makedirs(graphs_dir)
+
+    if metric_dict["epoch"] is not None:
+        metrics = [
+            "train-loss",
+            "train-acc",
+            "val-loss",
+            "val-acc",
+            "test-loss",
+            "test-acc",
+        ]
+        for metric in metrics:
+            if metric_dict[metric] is not None:
+                fig = tbu.plot_graph(
+                    metric_dict["epoch"],
+                    metric_dict[metric],
+                    f"{metric} graph",
+                    "epoch",
+                    metric,
+                )
+
+                print(
+                    f"Saving graph for {metric} in {graphs_dir}/{metric}-graph.png"
+                )
+                fig.savefig(f"{graphs_dir}/{metric}-graph.png")
+
+    return
 
 
 def run_visualizations(model: nn.Module) -> None:
@@ -156,8 +221,14 @@ def main():
 
     while True:
         model = get_model_from_queue(redis_client, minio_client)
+        # metric_dict = get_metric_dict_from_queue(redis_client, minio_client)
 
         run_visualizations(model)
+        # create_graphs(metric_dict)
+
+        send_visualizations(minio_client)
+        # send_graphs(minio_client)
+
 
 if __name__ == "__main__":
     main()
