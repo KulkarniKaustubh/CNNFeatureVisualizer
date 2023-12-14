@@ -1,6 +1,6 @@
 FROM python:3.9
 
-RUN  pip3 install --upgrade flask flask-wtf redis Flask-Debug requests minio psycopg2-binary
+RUN  pip3 install --upgrade flask flask-wtf redis Flask-Debug requests minio psycopg2-binary matplotlib
 
 RUN  mkdir /app
 COPY app /app
