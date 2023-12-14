@@ -1,5 +1,22 @@
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
+
+
+def plot_graph(
+    x_values: list, y_values: list, title: str, x_label: str, y_label: str
+):
+    fig, ax = plt.subplots()
+
+    ax.plot(x_values, y_values)
+
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
+
+    ax.legend()
+
+    return fig
 
 
 def load_model_weights(model: nn.Module, weights_file: str) -> nn.Module:
