@@ -12,6 +12,8 @@ from torchboard.img_functions import (
 )
 import torchboard.utils as tbu
 
+_generated_visualizations_dir = "/generated"
+
 
 class CNNLayerVisualization:
     """
@@ -27,8 +29,10 @@ class CNNLayerVisualization:
         self.selected_filter = selected_filter
         self.conv_output = 0
         # Create the folder to export images if not exists
-        if not os.path.exists("../generated"):
-            os.makedirs("../generated")
+        if not os.path.exists(_generated_visualizations_dir):
+            os.makedirs(
+                f"{_generated_visualizations_dir}/{self.selected_layer}"
+            )
 
     def hook_layer(self):
         def hook_function(module, grad_in, grad_out):
@@ -65,30 +69,25 @@ class CNNLayerVisualization:
             # Loss function is the mean of the output of the selected layer/filter
             # We try to minimize the mean of the output of that specific filter
             loss = -torch.mean(self.conv_output)
-            print(
-                "Iteration:",
-                str(i),
-                "Loss:",
-                "{0:.2f}".format(loss.data.numpy()),
-            )
+            # print(
+            #     "Iteration:",
+            #     str(i),
+            #     "Loss:",
+            #     "{0:.2f}".format(loss.data.numpy()),
+            # )
+
             # Backward
             loss.backward()
+
             # Update image
             optimizer.step()
+
             # Recreate image
             self.created_image = recreate_image(processed_image)
-            # Save image
-            if i % 5 == 0:
-                im_path = (
-                    "../generated/layer_vis_l"
-                    + str(self.selected_layer)
-                    + "_f"
-                    + str(self.selected_filter)
-                    + "_iter"
-                    + str(i)
-                    + ".jpg"
-                )
-                save_image(self.created_image, im_path)
+
+        # Save image
+        im_path = f"{_generated_visualizations_dir}/{self.selected_layer}/{self.selected_filter}.jpg"
+        save_image(self.created_image, im_path)
 
     def visualise_layer_without_hooks(self):
         # Process image and return variable
@@ -118,27 +117,22 @@ class CNNLayerVisualization:
             # Loss function is the mean of the output of the selected layer/filter
             # We try to minimize the mean of the output of that specific filter
             loss = -torch.mean(self.conv_output)
-            print(
-                "Iteration:",
-                str(i),
-                "Loss:",
-                "{0:.2f}".format(loss.data.numpy()),
-            )
+            # print(
+            #     "Iteration:",
+            #     str(i),
+            #     "Loss:",
+            #     "{0:.2f}".format(loss.data.numpy()),
+            # )
+
             # Backward
             loss.backward()
+
             # Update image
             optimizer.step()
+
             # Recreate image
             self.created_image = recreate_image(processed_image)
-            # Save image
-            if i % 5 == 0:
-                im_path = (
-                    "../generated/layer_vis_l"
-                    + str(self.selected_layer)
-                    + "_f"
-                    + str(self.selected_filter)
-                    + "_iter"
-                    + str(i)
-                    + ".jpg"
-                )
-                save_image(self.created_image, im_path)
+
+        # Save image
+        im_path = f"{_generated_visualizations_dir}/{self.selected_layer}/{self.selected_filter}.jpg"
+        save_image(self.created_image, im_path)
