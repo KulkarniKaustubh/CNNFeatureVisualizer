@@ -1,13 +1,16 @@
 import psycopg2
 from psycopg2 import sql
 import os
+
 print("Hellooooooooooo")
-conn  = None
+conn = None
 postgresHost = os.getenv("POSTGRES_HOST") or "localhost"
 postgresPort = os.getenv("POSTGRES_PORT") or 5432
-postgresUser = 'admin'
-postgresPassword = 'psltest'
-postgresDbname = 'postgresdb'
+postgresUser = "admin"
+postgresPassword = "psltest"
+postgresDbname = "postgresdb"
+
+
 def connect_to_postgres():
     global conn
     try:
@@ -21,6 +24,7 @@ def connect_to_postgres():
         print("PostgreSQL connection established.")
     except Exception as e:
         print("Exception: " + str(e))
+
 
 # # Execute the connect_to_postgres function before the first request
 # def before_request():
@@ -54,6 +58,7 @@ def create_table_helper(table_name, columns):
         response_data = {"response": "Failed", "Exception": str(e)}
         return response_data
 
+
 def create_custom_table(request_data):
     try:
         # Get data from the request body
@@ -63,7 +68,9 @@ def create_custom_table(request_data):
 
         # Check if required data is present
         if not table_name or not columns:
-            raise ValueError("Table name and columns are required in the request body")
+            raise ValueError(
+                "Table name and columns are required in the request body"
+            )
 
         # Call the create_table function with the provided parameters
         response = create_table_helper(table_name, columns)
@@ -72,6 +79,7 @@ def create_custom_table(request_data):
     except Exception as e:
         response_data = {"response": "Failed", "Exception": str(e)}
         return response_data
+
 
 def get_schema(request):
     try:
@@ -99,7 +107,9 @@ def get_schema(request):
 
             # Display the result
             for column_info in columns_info:
-                print(f"Column Name: {column_info[0]}, Data Type: {column_info[1]}")
+                print(
+                    f"Column Name: {column_info[0]}, Data Type: {column_info[1]}"
+                )
 
         cursor.close()
         response_data = {"response": "Success"}
@@ -110,34 +120,28 @@ def get_schema(request):
         response_data = {"response": "Failed", "Exception": str(e)}
         return response_data
 
+
 def create_table(table_name, columns):
-    
-    data = {
-        "table_name": table_name,
-        "columns": columns
-    }
+    data = {"table_name": table_name, "columns": columns}
     response = create_custom_table(data)
     return response
 
+
 def create_user_table():
     table_name = "users"
-    columns = [
-        ["username", "VARCHAR PRIMARY KEY"]
-    ]
+    columns = [["username", "VARCHAR PRIMARY KEY"]]
     response_data = create_table(table_name, columns)
     print("Response:", response_data)
 
 
 def create_model_hashes_table():
     table_name = "model_hashes"
-    columns = [
-        ["model_hash", "VARCHAR PRIMARY KEY"],
-        ["username", "VARCHAR"]
-    ]
+    columns = [["model_hash", "VARCHAR PRIMARY KEY"], ["username", "VARCHAR"]]
 
     response_data = create_table(table_name, columns)
 
     print("Response:", response_data)
+
 
 def create_training_metrics_table():
     table_name = "training_metrics"
@@ -146,14 +150,14 @@ def create_training_metrics_table():
         ["losses", "FLOAT"],
         ["accuracy", "FLOAT"],
         ["model_hash", "VARCHAR"],
-        ["username", "VARCHAR"]
+        ["username", "VARCHAR"],
     ]
     response_data = create_table(table_name, columns)
 
     print("Response:", response_data)
 
-    
-if name == '__main__':
-   create_user_table()
-   create_model_hashes_table()
-   create_training_metrics_table()
+
+if name == "__main__":
+    create_user_table()
+    create_model_hashes_table()
+    create_training_metrics_table()

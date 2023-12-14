@@ -1,5 +1,5 @@
 VERSION=v1
-DOCKERUSER=jayantduneja1234
+DOCKERUSER=kaustubhkulkarni
 
 build:
 	docker build -f Dockerfile -t rest-server-gke .

@@ -12,8 +12,6 @@ from torchboard.img_functions import (
 )
 import torchboard.utils as tbu
 
-_generated_visualizations_dir = "/generated"
-
 
 class CNNLayerVisualization:
     """
@@ -21,18 +19,23 @@ class CNNLayerVisualization:
     operation for a specific layer and filter
     """
 
-    def __init__(self, model, selected_layer, selected_filter):
+    def __init__(
+        self,
+        model,
+        selected_layer,
+        selected_filter,
+        visualizations_dir="/generated",
+    ):
         # print(model)
         self.model = model
         self.model.eval()
         self.selected_layer = selected_layer
         self.selected_filter = selected_filter
         self.conv_output = 0
+        self.visualizations_dir = visualizations_dir
         # Create the folder to export images if not exists
-        if not os.path.exists(_generated_visualizations_dir):
-            os.makedirs(
-                f"{_generated_visualizations_dir}/{self.selected_layer}"
-            )
+        if not os.path.exists(self.visualizations_dir):
+            os.makedirs(f"{self.visualizations_dir}/{self.selected_layer}")
 
     def hook_layer(self):
         def hook_function(module, grad_in, grad_out):
@@ -86,7 +89,7 @@ class CNNLayerVisualization:
             self.created_image = recreate_image(processed_image)
 
         # Save image
-        im_path = f"{_generated_visualizations_dir}/{self.selected_layer}/{self.selected_filter}.jpg"
+        im_path = f"{self.visualizations_dir}/{self.selected_layer}/{self.selected_filter}.jpg"
         save_image(self.created_image, im_path)
 
     def visualise_layer_without_hooks(self):
@@ -134,5 +137,5 @@ class CNNLayerVisualization:
             self.created_image = recreate_image(processed_image)
 
         # Save image
-        im_path = f"{_generated_visualizations_dir}/{self.selected_layer}/{self.selected_filter}.jpg"
+        im_path = f"{self.visualizations_dir}/{self.selected_layer}/{self.selected_filter}.jpg"
         save_image(self.created_image, im_path)

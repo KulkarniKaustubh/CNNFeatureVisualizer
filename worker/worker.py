@@ -10,7 +10,6 @@ import torch.nn as nn
 
 
 import torchboard.utils as tbu
-from torchboard.visualizers import _generated_visualizations_dir
 
 
 def _get_model(source_code, layer_weights_file):
@@ -142,16 +141,6 @@ def get_metric_dict_from_queue(
     return {}
 
 
-def _zip_generated_visualizations() -> None:
-    shutil.make_archive(
-        f"{_generated_visualizations_dir}.zip",
-        "zip",
-        _generated_visualizations_dir,
-    )
-
-    return
-
-
 def push_to_minio_bucket(
     minio_client, bucket_name, minio_file_location, source_file_location
 ):
@@ -167,21 +156,21 @@ def push_to_minio_bucket(
     )
 
 
-def send_visualizations(minio_client: Minio, project_id) -> None:
-    print(
-        f"Zipping {_generated_visualizations_dir} to {_generated_visualizations_dir}.zip"
-    )
-    _zip_generated_visualizations()
+def send_visualizations(
+    minio_client: Minio, username: str, project_id: str
+) -> None:
+    print("Zipping...")
+    tbu.zip_folder(f"{username}-{project_id}-generated")
+
     bucket_name = "visualizations"
-    minio_file_location = f"{project_id}.zip"
-    source_file_location = f"{_generated_visualizations_dir}.zip"
+    file_location = f"{username}-{project_id}-generated.zip"
+
     push_to_minio_bucket(
         minio_client=minio_client,
         bucket_name=bucket_name,
-        minio_file_location=minio_file_location,
-        source_file_location=source_file_location,
+        minio_file_location=file_location,
+        source_file_location=file_location,
     )
-    # minio_client.fput_object()
 
     return
 
@@ -223,13 +212,18 @@ def create_graphs(metric_dict: dict) -> None:
     return
 
 
-def run_visualizations(model: nn.Module) -> None:
+def run_visualizations(
+    model: nn.Module, username: str, project_id: str
+) -> None:
     conv_layer_idx_dict = tbu.get_conv_layer_idx_dict(model)
 
     for idx in conv_layer_idx_dict:
         for channel in range(conv_layer_idx_dict[idx]):
             cnn_layer_viz = tb.visualizers.CNNLayerVisualization(
-                model, idx, channel
+                model,
+                idx,
+                channel,
+                generated=f"{username}-{project_id}-generated",
             )
 
             print("Visualizing with hooks.")
@@ -247,16 +241,16 @@ def main():
     minio_client = init_minio()
 
     while True:
-        model, user_name, project_id = get_model_from_queue(
+        model, username, project_id = get_model_from_queue(
             redis_client, minio_client
         )
         print(f"{project_id}.zip")
         # metric_dict = get_metric_dict_from_queue(redis_client, minio_client)
 
-        # run_visualizations(model)
+        run_visualizations(model, username, project_id)
         # create_graphs(metric_dict)
 
-        # send_visualizations(minio_client, project_id=project_id)
+        send_visualizations(minio_client, username, project_id)
         # send_graphs(minio_client)
 
 

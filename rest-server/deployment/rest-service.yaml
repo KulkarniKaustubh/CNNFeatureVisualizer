@@ -17,4 +17,5 @@ spec:
   selector:
     app: cnn-feature-server
     tier: frontend
+  type: NodePort
 ---

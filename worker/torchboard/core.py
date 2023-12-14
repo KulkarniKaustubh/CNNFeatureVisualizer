@@ -8,6 +8,7 @@ import hashlib
 import inspect
 import time
 import random
+import io
 
 import torchboard.rest as rest
 
@@ -170,8 +171,44 @@ def log(metric_dict: dict) -> None:
 
 
 def download_graphs(dest_path: str):
-    pass
+    endpoint = "downloadGraphs"
+
+    data = {
+        "username": _username,
+        "project_id": _project_id,
+    }
+    payload = {"data": json.dumps(data)}
+
+    response = rest._request_response(endpoint, requests.post, payload)
+
+    if response.status_code == 200:
+        zip_content = io.BytesIO(response.content)
+
+        with open(dest_path, "wb") as zip_file:
+            zip_file.write(zip_content.getvalue())
+
+        print(f"Downloaded zip file with graphs at {dest_path}.")
+    else:
+        print("Visualizations download failed.")
 
 
 def download_visualizations(dest_path: str):
-    pass
+    endpoint = "downloadVis"
+
+    data = {
+        "username": _username,
+        "project_id": _project_id,
+    }
+    payload = {"data": json.dumps(data)}
+
+    response = rest._request_response(endpoint, requests.post, payload)
+
+    if response.status_code == 200:
+        zip_content = io.BytesIO(response.content)
+
+        with open(dest_path, "wb") as zip_file:
+            zip_file.write(zip_content.getvalue())
+
+        print(f"Downloaded zip file with visualizations at {dest_path}.")
+    else:
+        print("Visualizations download failed.")

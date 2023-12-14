@@ -1,6 +1,11 @@
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
+import shutil
+
+
+def zip_folder(folder_path: str) -> None:
+    shutil.make_archive(f"{folder_path}.zip", "zip", folder_path)
 
 
 def plot_graph(

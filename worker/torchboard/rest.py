@@ -13,7 +13,7 @@ def _request_response(
     files: dict = None,
     json: dict = None,
     debug: bool = True,
-) -> None:
+):
     response = req_method(
         f"http://{REST}/{endpoint}", data=data, files=files, json=json
     )
@@ -30,4 +30,4 @@ def _request_response(
     if debug:
         print(response.text)
 
-    return
+    return response
