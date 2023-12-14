@@ -102,18 +102,23 @@ def get_model_from_queue(
 
     try:
         work = redis_client.blpop(redis_queue, timeout=0)
-
-        model_name = (
+        user_name = (
             work[1].decode("utf-8").split(".")[0].split(":")[1].strip()
         )
-        layer_weights_minio_path = (
+        # model_name = (
+        #     work[1].decode("utf-8").split(".")[0].split(":")[1].strip()
+        # )
+        project_id = (
             work[1].decode("utf-8").split(".")[1].split(":")[1].strip()
         )
+        layer_weights_minio_path = (
+            work[1].decode("utf-8").split(".")[2].split(":")[1].strip()
+        )
 
-        print("Model Name : ", model_name)
+        print("Project_id : ", project_id)
         print("Layer_Weights Minio Path: ", layer_weights_minio_path)
         response = minio_client.fget_object(
-            bucket_name_source_code, model_name, source_code_file_location
+            bucket_name_source_code, project_id, source_code_file_location
         )
         print("Recieved source code in location: ", source_code_file_location)
         response = minio_client.fget_object(
@@ -130,7 +135,7 @@ def get_model_from_queue(
     except Exception as e:
         print("Exception: ", e)
 
-    return model
+    return model, user_name, project_id
 
 
 def get_metric_dict_from_queue(
@@ -149,12 +154,32 @@ def _zip_generated_visualizations() -> None:
     return
 
 
-def send_visualizations(minio_client: Minio) -> None:
+def push_to_minio_bucket(
+    minio_client, bucket_name, minio_file_location, source_file_location
+):
+    result = minio_client.fput_object(
+        bucket_name, minio_file_location, source_file_location
+    )
+    print(
+        "created {0} object; etag: {1}, version-id: {2}".format(
+            result.object_name,
+            result.etag,
+            result.version_id,
+        )
+    )
+
+def send_visualizations(minio_client: Minio, project_id) -> None:
     print(
         f"Zipping {_generated_visualizations_dir} to {_generated_visualizations_dir}.zip"
     )
     _zip_generated_visualizations()
-
+    bucket_name = "visualizations"
+    minio_file_location = f"{project_id}.zip"
+    source_file_location = f"{_generated_visualizations_dir}.zip"
+    push_to_minio_bucket(minio_client=minio_client,
+                         bucket_name=bucket_name,
+                         minio_file_location=minio_file_location,
+                         source_file_location=source_file_location)
     # minio_client.fput_object()
 
     return
@@ -220,13 +245,14 @@ def main():
     minio_client = init_minio()
 
     while True:
-        model = get_model_from_queue(redis_client, minio_client)
+        model,user_name, project_id= get_model_from_queue(redis_client, minio_client)
+        print(f"{project_id}.zip")
         # metric_dict = get_metric_dict_from_queue(redis_client, minio_client)
 
-        run_visualizations(model)
+        # run_visualizations(model)
         # create_graphs(metric_dict)
 
-        send_visualizations(minio_client)
+        # send_visualizations(minio_client, project_id=project_id)
         # send_graphs(minio_client)
 
 

@@ -3,7 +3,7 @@ from app import app
 import json
 import os
 
-from flask import request, jsonify
+from flask import request, jsonify, send_file
 
 import psycopg2
 from psycopg2 import sql
@@ -350,9 +350,10 @@ def init():
     with open(source_code_file_location, "w") as f:
         f.write(source_code)
 
-    model_class_name = data["model_class_name"]
+    # model_class_name = data["model_class_name"]
+    project_id = data["project_id"]
     bucket_name = "source-code"
-    minio_file_location = model_class_name
+    minio_file_location = project_id
 
     make_minio_bucket(bucket_name=bucket_name)
     push_to_minio_bucket(
@@ -371,10 +372,12 @@ def upload_model_2():
     layer_weights_file_location = "layer_weights.pth"
     uploaded_file.save(layer_weights_file_location)
     data = json.loads(request.form.get("data"))
-    model_class_name = data["model_class_name"]
+    # model_class_name = data["model_class_name"]
+    user_name = data["username"]
+    project_id = data["project_id"]
     iteration_number = data["iteration_number"]
     bucket_name = "layer-weights"
-    minio_file_location = model_class_name + "/" + str(iteration_number)
+    minio_file_location = project_id + "/" + str(iteration_number)
     make_minio_bucket(bucket_name=bucket_name)
     push_to_minio_bucket(
         bucket_name=bucket_name,
@@ -383,8 +386,21 @@ def upload_model_2():
     )
     redisClient.lpush(
         "toWorkers",
-        f"Request for : {model_class_name}. Layer_Weights placed at: {minio_file_location}",
+        f"Request by : {user_name}. Request for : {project_id}. Layer_Weights placed at: {minio_file_location}",
     )
     print("Pushed to redis queue")
     response_data = {"response": "Success"}
     return jsonify(response_data)
+
+@app.route("/downloadVis", methods=["POST"])
+def downloadVis():
+    data = json.loads(request.form.get("data"))
+    project_id = data["project_id"]
+    minio_file_location = f"{project_id}.zip"
+    bucket_name = "visualizations"
+    zip_file_location = "generated_vis.zip"
+    response = minioClient.fget_object(
+            bucket_name, minio_file_location, zip_file_location
+    )
+    print("Recieved Layer Weights in location: ", minio_file_location)
+    return send_file(zip_file_location, as_attachment=True, download_name='generated_visualizations.zip')

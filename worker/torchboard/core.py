@@ -89,6 +89,7 @@ def init(
 
 
 def _send_model(model) -> None:
+    global _username, _project_id
     endpoint = "visualize2"
 
     file_path = "layer_weights.pth"
@@ -100,14 +101,12 @@ def _send_model(model) -> None:
     torch.save(layer_weights, file_path)
 
     # Define additional fields
-    username = "example_user"
-    model_name = "example_model"
     iteration_number = 1
 
     # Create a dictionary with your fields
     data = {
-        "username": username,
-        "modelname": model_name,
+        "username": _username,
+        "project_id": _project_id,
         "iteration_number": iteration_number,
     }
     files = {"file": open(file_path, "rb")}
