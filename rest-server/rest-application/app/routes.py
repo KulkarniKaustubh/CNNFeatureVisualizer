@@ -58,6 +58,12 @@ minioClient = Minio(
 #     with torch.no_grad():
 #         output = model(example_input)
 #     return output
+# def get_model_output(model):
+#     model.eval()
+#     example_input = torch.randn(1, 3, 255, 255)
+#     with torch.no_grad():
+#         output = model(example_input)
+#     return output
 
 
 @app.route("/", methods=["GET"])

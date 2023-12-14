@@ -1,7 +1,7 @@
 import requests
 
 def create_table(table_name, columns):
-    url = 'http://localhost:5000/postgres/createTable'
+    url = 'http://34.121.134.170.nip.io:80/postgres/createTable'
     headers = {'Content-Type': 'application/json'}
 
     data = {
@@ -12,11 +12,11 @@ def create_table(table_name, columns):
     return response.status_code, response.json()
 
 def insert_rows(table_name, rows):
-    url = 'http://localhost:5000/postgres/insertRows'
+    url = 'http://34.121.134.170.nip.io:80/postgres/insertRows'
     headers = {'Content-Type': 'application/json'}
     data = {
         "table_name": table_name,
-        "rows": rows
+        "rows": rows,
     }
     response = requests.post(url, json=data, headers=headers)
     return response.status_code, response.json()
@@ -62,10 +62,10 @@ def create_training_metrics_table():
     print(f"Status Code: {status_code}")
     print("Response:", response_data)
 
-def insert_to_users():
+def insert_to_users(username):
     table_name = "users"
     rows = [
-        ["john_doe"]
+        [username]
     ]
     status_code, response_data = insert_rows(table_name, rows)
     print(f"Status Code: {status_code}")
@@ -83,16 +83,14 @@ def insert_to_model_hashes():
 def insert_to_training_metrics():
     table_name = "training_metrics"
     rows = [
-        [1 , 0.9, 0.1, "67890^&*()", "john_doe"],
-        [2 , 0.7, 0.2, "67890^&*()", "john_doe"],
-        [3 , 0.5, 0.3, "67890^&*()", "john_doe"]
+        ["jayant_duneja", "123456", 2,None,0.5, None, 0.7, None]
     ]
     status_code, response_data = insert_rows(table_name, rows)
     print(f"Status Code: {status_code}")
     print("Response:", response_data)
 
 def get_losses():
-    url = 'http://localhost:5000/postgres/getLosses'
+    url = 'http://34.121.134.170.nip.io:80/postgres/getLosses'
     headers = {'Content-Type': 'application/json'}
 
     data = {
@@ -111,5 +109,5 @@ def get_losses():
 # create_training_metrics_table()
 # insert_to_users()
 # insert_to_model_hashes()
-# insert_to_training_metrics()
-get_losses()
+insert_to_training_metrics()
+# get_losses()
