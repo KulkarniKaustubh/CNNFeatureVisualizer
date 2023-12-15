@@ -5,7 +5,7 @@ import shutil
 
 
 def zip_folder(folder_path: str) -> None:
-    shutil.make_archive(f"{folder_path}.zip", "zip", folder_path)
+    shutil.make_archive(folder_path, "zip", folder_path)
 
 
 def plot_graph(

@@ -68,6 +68,14 @@ def init_minio() -> Minio:
     return minio_client
 
 
+def make_minio_bucket(minio_client: Minio, bucket_name: str):
+    if minio_client.bucket_exists(bucket_name):
+        print(f"{bucket_name} Bucket exists")
+    else:
+        minio_client.make_bucket(bucket_name)
+        print(f"Bucket {bucket_name} has been created")
+
+
 def check_minio_objects(minio_client, bucket_name):
     minio_objects = minio_client.list_objects(bucket_name)
 
@@ -162,8 +170,15 @@ def send_visualizations(
     print("Zipping...")
     tbu.zip_folder(f"{username}-{project_id}-generated")
 
+    if os.path.exists(f"{username}-{project_id}-generated.zip"):
+        print("Created zip file.")
+    else:
+        print("Did not create zip file.")
+
     bucket_name = "visualizations"
     file_location = f"{username}-{project_id}-generated.zip"
+
+    make_minio_bucket(minio_client, bucket_name)
 
     push_to_minio_bucket(
         minio_client=minio_client,

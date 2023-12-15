@@ -402,7 +402,7 @@ def download_vis():
     username = data["username"]
     project_id = data["project_id"]
 
-    file_location = f"{username}-{project_id}-generated.zip"
+    file_location = f"/{username}-{project_id}-generated.zip"
     bucket_name = "visualizations"
 
     response = minioClient.fget_object(
@@ -422,7 +422,7 @@ def _plot_graph(
 ):
     fig, ax = plt.subplots()
 
-    ax.plot(x_values, y_values, legend="Data")
+    ax.plot(x_values, y_values, label="Data")
 
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
@@ -437,56 +437,61 @@ def create_graphs(graphs_dir: str, username: str, project_id: str) -> None:
     if not os.path.exists(graphs_dir):
         os.makedirs(graphs_dir)
 
-    try:
-        # Check if required data is present
-        with conn.cursor() as cursor:
-            # Define the query to select losses and epochs for a specific model_hash and username
-            query = sql.SQL(
-                "SELECT * FROM training_metrics WHERE username = {} AND model_hash = {};"
-            ).format(sql.Literal(project_id), sql.Literal(username))
+    # try:
+    # Check if required data is present
+    with conn.cursor() as cursor:
+        # Define the query to select losses and epochs for a specific model_hash and username
+        query = sql.SQL(
+            "SELECT * FROM training_metrics WHERE username = {} AND model_hash = {};"
+        ).format(sql.Literal(username), sql.Literal(project_id))
 
-            # Execute the query
-            cursor.execute(query)
+        # Execute the query
+        cursor.execute(query)
 
-            # Fetch all rows
-            rows = cursor.fetchall()
+        # Fetch all rows
+        rows = cursor.fetchall()
 
-            metrics = [
-                "train-loss",
-                "train-acc",
-                "val-loss",
-                "val-acc",
-                "test-loss",
-                "test-acc",
-            ]
+        metrics = [
+            "train-loss",
+            "train-acc",
+            "val-loss",
+            "val-acc",
+            "test-loss",
+            "test-acc",
+        ]
 
-            metric_dict = {
-                "epochs": [row[2] for row in rows],
-                "train_loss": [row[3] for row in rows],
-                "train_acc": [row[4] for row in rows],
-                "val_loss": [row[5] for row in rows],
-                "val_acc": [row[6] for row in rows],
-                "test_loss": [row[7] for row in rows],
-                "test_acc": [row[8] for row in rows],
-            }
+        metric_dict = {
+            "epochs": [row[2] for row in rows],
+            "train-loss": [row[3] for row in rows],
+            "train-acc": [row[4] for row in rows],
+            "val-loss": [row[5] for row in rows],
+            "val-acc": [row[6] for row in rows],
+            "test-loss": [row[7] for row in rows],
+            "test-acc": [row[8] for row in rows],
+        }
 
-            for metric in metrics:
-                if (
-                    metric_dict[metric] is not None
-                    and len(metric_dict[metric]) != 0
-                ):
-                    filtered_epochs = [
-                        epoch
-                        for epoch, metric in zip(
-                            metric_dict["epochs"], metric_dict[metric]
-                        )
-                        if metric_value is not None
-                    ]
-                    filtered_metric = [
-                        metric_value
-                        for metric_value in metric_dict[metric]
-                        if metric_value is not None
-                    ]
+        for metric in metrics:
+            print(metric_dict)
+            if (
+                metric_dict[metric] is not None
+                and len(metric_dict[metric]) != 0
+            ):
+                print("Inside if")
+                filtered_epochs = [
+                    epoch
+                    for epoch, metric_value in zip(
+                        metric_dict["epochs"], metric_dict[metric]
+                    )
+                    if metric_value is not None
+                ]
+                filtered_metric = [
+                    metric_value
+                    for metric_value in metric_dict[metric]
+                    if metric_value is not None
+                ]
+
+                if len(filtered_metric) != 0:
+                    print("Plotting")
                     fig = _plot_graph(
                         filtered_epochs,
                         filtered_metric,
@@ -502,11 +507,11 @@ def create_graphs(graphs_dir: str, username: str, project_id: str) -> None:
 
                     del fig
 
-        cursor.close()
-        print("Created graphs.")
-    except Exception as e:
-        conn.rollback()
-        print("Failed creating graphs: ", e)
+    cursor.close()
+    print("Created graphs.")
+    # except Exception as e:
+    #     conn.rollback()
+    #     print("Failed creating graphs: ", e)
 
 
 @app.route("/downloadGraphs", methods=["POST"])
@@ -516,11 +521,11 @@ def download_graphs():
     username = data["username"]
     project_id = data["project_id"]
 
-    graphs_dir = f"{username}-{project_id}-graphs.zip"
+    graphs_dir = f"/{username}-{project_id}-graphs"
     create_graphs(graphs_dir, username, project_id)
+    shutil.make_archive(graphs_dir, "zip", graphs_dir)
 
-    graphs_zip_location = f"{username}-{project_id}-graphs.zip"
-    shutil.make_archive(graphs_zip_location, "zip", graphs_dir)
+    graphs_zip_location = f"{graphs_dir}.zip"
 
     print("Sending graphs zip file.")
     return send_file(
