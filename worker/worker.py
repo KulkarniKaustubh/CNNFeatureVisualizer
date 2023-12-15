@@ -171,6 +171,7 @@ def send_visualizations(
         minio_file_location=file_location,
         source_file_location=file_location,
     )
+    # minio_client.fput_object()
 
     return
 
@@ -223,7 +224,7 @@ def run_visualizations(
                 model,
                 idx,
                 channel,
-                generated=f"{username}-{project_id}-generated",
+                visualizations_dir=f"{username}-{project_id}-generated",
             )
 
             print("Visualizing with hooks.")
@@ -244,7 +245,7 @@ def main():
         model, username, project_id = get_model_from_queue(
             redis_client, minio_client
         )
-        print(f"{project_id}.zip")
+
         # metric_dict = get_metric_dict_from_queue(redis_client, minio_client)
 
         run_visualizations(model, username, project_id)

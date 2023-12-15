@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: python-worker
-        image: jayantduneja1234/cnn-worker-gke-1:latest
+        image: kaustubhkulkarni/cnn-worker-gke-2:latest
         resources:
           requests:
             cpu: 100m
