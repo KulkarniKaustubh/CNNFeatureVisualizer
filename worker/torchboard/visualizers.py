@@ -34,7 +34,9 @@ class CNNLayerVisualization:
         self.conv_output = 0
         self.visualizations_dir = visualizations_dir
         # Create the folder to export images if not exists
-        if not os.path.exists(self.visualizations_dir):
+        if not os.path.exists(
+            f"{self.visualizations_dir}/{self.selected_layer}"
+        ):
             os.makedirs(f"{self.visualizations_dir}/{self.selected_layer}")
 
     def hook_layer(self):

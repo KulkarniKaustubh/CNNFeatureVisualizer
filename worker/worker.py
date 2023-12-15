@@ -219,7 +219,9 @@ def run_visualizations(
     conv_layer_idx_dict = tbu.get_conv_layer_idx_dict(model)
 
     for idx in conv_layer_idx_dict:
+        print(idx)
         for channel in range(conv_layer_idx_dict[idx]):
+            print(channel)
             cnn_layer_viz = tb.visualizers.CNNLayerVisualization(
                 model,
                 idx,
@@ -227,10 +229,10 @@ def run_visualizations(
                 visualizations_dir=f"{username}-{project_id}-generated",
             )
 
-            print("Visualizing with hooks.")
+            print(f"Visualizing {idx} with hooks.")
             cnn_layer_viz.visualise_layer_with_hooks()
 
-            print("Visualizing without hooks.")
+            print(f"Visualizing {idx} without hooks.")
             cnn_layer_viz.visualise_layer_without_hooks()
 
             # remove object from memory
